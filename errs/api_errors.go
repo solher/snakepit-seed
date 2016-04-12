@@ -3,10 +3,7 @@ package errs
 import "github.com/solher/snakepit"
 
 var (
-	APIInternal = snakepit.APIError{
-		Description: "An internal error occured. Please retry later.",
-		ErrorCode:   "INTERNAL_ERROR",
-	}
+	APIInternal     = snakepit.APIInternal
 	APIUnauthorized = snakepit.APIError{
 		Description: "Authorization Required.",
 		ErrorCode:   "AUTHORIZATION_REQUIRED",

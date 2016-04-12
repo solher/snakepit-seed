@@ -1,34 +1,29 @@
 package errs
 
-import "github.com/palantir/stacktrace"
+import "github.com/solher/snakepit"
 
-const (
-	EcodeDatabase = stacktrace.ErrorCode(iota)
-	EcodeNotFound
-	EcodeInvalidFilter
-	EcodeSeedsNotSync
-	EcodeServiceError
+type (
+	ErrDatabase      struct{ snakepit.InternalError }
+	ErrNotFound      struct{ snakepit.InternalError }
+	ErrInvalidFilter struct{ snakepit.InternalError }
+	ErrSeedsNotSync  struct{ snakepit.InternalError }
+	ErrService       struct{ snakepit.InternalError }
 )
 
 var (
-	ErrDatabase = stacktrace.NewMessageWithCode(
-		EcodeDatabase,
-		"undefined database error",
-	)
-	ErrNotFound = stacktrace.NewMessageWithCode(
-		EcodeNotFound,
-		"the specified resource was not found or you do not have sufficient permissions",
-	)
-	ErrInvalidFilter = stacktrace.NewMessageWithCode(
-		EcodeInvalidFilter,
-		"the given query filter is invalid",
-	)
-	ErrSeedsNotSync = stacktrace.NewMessageWithCode(
-		EcodeSeedsNotSync,
-		"local and distant seeds does not match",
-	)
-	ErrServiceError = stacktrace.NewMessageWithCode(
-		EcodeServiceError,
-		"an internal service failed to respond",
-	)
+	Database = ErrDatabase{
+		snakepit.NewInternalError("undefined database error"),
+	}
+	NotFound = ErrNotFound{
+		snakepit.NewInternalError("the specified resource was not found or insufficient permissions"),
+	}
+	InvalidFilter = ErrInvalidFilter{
+		snakepit.NewInternalError("the given query filter is invalid"),
+	}
+	SeedsNotSync = ErrSeedsNotSync{
+		snakepit.NewInternalError("local and distant seeds does not match"),
+	}
+	ServiceError = ErrService{
+		snakepit.NewInternalError("an internal service failed to respond"),
+	}
 )

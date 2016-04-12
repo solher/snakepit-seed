@@ -8,12 +8,11 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/pressly/chi"
 	"git.wid.la/versatile/versatile-server/errs"
 	"git.wid.la/versatile/versatile-server/middlewares"
 	"git.wid.la/versatile/versatile-server/models"
+	"github.com/pressly/chi"
 
-	"github.com/palantir/stacktrace"
 	"github.com/solher/arangolite/filters"
 	"github.com/solher/snakepit"
 )
@@ -43,7 +42,7 @@ type (
 		ValidateUpdate(user *models.User) error
 	}
 
-	UsersCtrl struct {
+	Users struct {
 		i   UsersInter
 		srw SessionsReaderWriter
 		v   UsersValidator
@@ -51,13 +50,13 @@ type (
 	}
 )
 
-func NewUsersCtrl(
+func NewUsers(
 	i UsersInter,
 	srw SessionsReaderWriter,
 	v UsersValidator,
 	r *snakepit.Render,
-) *UsersCtrl {
-	return &UsersCtrl{i: i, srw: srw, v: v, r: r}
+) *Users {
+	return &Users{i: i, srw: srw, v: v, r: r}
 }
 
 // Signin swagger:route POST /signin Users UsersSignin
@@ -72,26 +71,26 @@ func NewUsersCtrl(
 //  401: UnauthorizedResponse
 //  422: ValidationResponse
 //  500: InternalResponse
-func (c *UsersCtrl) Signin(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	cred := &models.Credentials{}
 
 	if err := json.NewDecoder(r.Body).Decode(cred); err != nil {
-		c.r.JSONError(w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
 		return
 	}
 
 	if err := c.v.ValidateSignin(cred); err != nil {
-		c.r.JSONError(w, 422, errs.APIValidation, err)
+		c.r.JSONError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 
 	user, err := c.i.FindByCred(cred)
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeNotFound:
-			c.r.JSONError(w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch err.(type) {
+		case errs.ErrNotFound:
+			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -109,7 +108,7 @@ func (c *UsersCtrl) Signin(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	session, err = c.srw.Create(session)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
@@ -129,10 +128,10 @@ func (c *UsersCtrl) Signin(ctx context.Context, w http.ResponseWriter, r *http.R
 //  200: SessionResponse
 //  401: UnauthorizedResponse
 //  500: InternalResponse
-func (c *UsersCtrl) CurrentSession(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	session, err := middlewares.SessionFromCtx(ctx)
+func (c *Users) CurrentSession(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	session, err := middlewares.GetCurrentSession(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
@@ -149,16 +148,16 @@ func (c *UsersCtrl) CurrentSession(ctx context.Context, w http.ResponseWriter, r
 //  200: SessionResponse
 //  401: UnauthorizedResponse
 //  500: InternalResponse
-func (c *UsersCtrl) Signout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	token, err := middlewares.AccessTokenFromCtx(ctx)
+func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	token, err := middlewares.GetAccessToken(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	session, err := c.srw.Delete(token)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
@@ -180,26 +179,26 @@ func (c *UsersCtrl) Signout(ctx context.Context, w http.ResponseWriter, r *http.
 //  401: UnauthorizedResponse
 //  422: InvalidFilterResponse
 //  500: InternalResponse
-func (c *UsersCtrl) Find(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.UserFromCtx(ctx)
+func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	currentUser, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	filter, err := filters.FromRequest(r)
 	if err != nil {
-		c.r.JSONError(w, http.StatusBadRequest, errs.APIFilterDecoding, err)
+		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
 		return
 	}
 
 	users, err := c.i.Find(currentUser.ID, filter)
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeInvalidFilter:
-			c.r.JSONError(w, 422, errs.APIInvalidFilter, err)
+		switch err.(type) {
+		case errs.ErrInvalidFilter:
+			c.r.JSONError(ctx, w, 422, errs.APIInvalidFilter, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -220,20 +219,20 @@ func (c *UsersCtrl) Find(ctx context.Context, w http.ResponseWriter, r *http.Req
 // Responses:
 //  200: UserResponse
 //  401: UnauthorizedResponse
-func (c *UsersCtrl) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	user, err := middlewares.UserFromCtx(ctx)
+func (c *Users) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	user, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	user, err = c.i.FindByKey(user.ID, user.ID, nil)
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeNotFound:
-			c.r.JSONError(w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch err.(type) {
+		case errs.ErrNotFound:
+			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -255,28 +254,28 @@ func (c *UsersCtrl) FindSelf(ctx context.Context, w http.ResponseWriter, r *http
 //  401: UnauthorizedResponse
 //  422: InvalidFilterResponse
 //  500: InternalResponse
-func (c *UsersCtrl) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.UserFromCtx(ctx)
+func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	currentUser, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	filter, err := filters.FromRequest(r)
 	if err != nil {
-		c.r.JSONError(w, http.StatusBadRequest, errs.APIFilterDecoding, err)
+		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
 		return
 	}
 
 	user, err := c.i.FindByKey(currentUser.ID, "users/"+chi.URLParams(ctx)["key"], filter)
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeInvalidFilter:
-			c.r.JSONError(w, 422, errs.APIInvalidFilter, err)
-		case errs.EcodeNotFound:
-			c.r.JSONError(w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch err.(type) {
+		case errs.ErrInvalidFilter:
+			c.r.JSONError(ctx, w, 422, errs.APIInvalidFilter, err)
+		case errs.ErrNotFound:
+			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -298,10 +297,10 @@ func (c *UsersCtrl) FindByKey(ctx context.Context, w http.ResponseWriter, r *htt
 //  401: UnauthorizedResponse
 //  422: ValidationResponse
 //  500: InternalResponse
-func (c *UsersCtrl) Create(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.UserFromCtx(ctx)
+func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	currentUser, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
@@ -312,7 +311,7 @@ func (c *UsersCtrl) Create(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	if err := json.Unmarshal(buffer, user); err != nil {
 		if err := json.Unmarshal(buffer, &users); err != nil {
-			c.r.JSONError(w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+			c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
 			return
 		}
 	}
@@ -324,7 +323,7 @@ func (c *UsersCtrl) Create(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	if err != nil {
-		c.r.JSONError(w, 422, errs.APIValidation, err)
+		c.r.JSONError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 
@@ -335,7 +334,7 @@ func (c *UsersCtrl) Create(ctx context.Context, w http.ResponseWriter, r *http.R
 	}
 
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
@@ -358,26 +357,26 @@ func (c *UsersCtrl) Create(ctx context.Context, w http.ResponseWriter, r *http.R
 //  401: UnauthorizedResponse
 //  422: InvalidFilterResponse
 //  500: InternalResponse
-func (c *UsersCtrl) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.UserFromCtx(ctx)
+func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	currentUser, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	filter, err := filters.FromRequest(r)
 	if err != nil {
-		c.r.JSONError(w, http.StatusBadRequest, errs.APIFilterDecoding, err)
+		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
 		return
 	}
 
 	users, err := c.i.Delete(currentUser.ID, filter)
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeInvalidFilter:
-			c.r.JSONError(w, 422, errs.APIInvalidFilter, err)
+		switch err.(type) {
+		case errs.ErrInvalidFilter:
+			c.r.JSONError(ctx, w, 422, errs.APIInvalidFilter, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -395,20 +394,20 @@ func (c *UsersCtrl) Delete(ctx context.Context, w http.ResponseWriter, r *http.R
 //  200: UserResponse
 //  401: UnauthorizedResponse
 //  500: InternalResponse
-func (c *UsersCtrl) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.UserFromCtx(ctx)
+func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	currentUser, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	user, err := c.i.DeleteByKey(currentUser.ID, "users/"+chi.URLParams(ctx)["key"])
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeNotFound:
-			c.r.JSONError(w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch err.(type) {
+		case errs.ErrNotFound:
+			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -430,28 +429,28 @@ func (c *UsersCtrl) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *h
 //  400: FilterDecodingResponse
 //  422: InvalidFilterResponse
 //  500: InternalResponse
-func (c *UsersCtrl) Update(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.UserFromCtx(ctx)
+func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	currentUser, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	filter, err := filters.FromRequest(r)
 	if err != nil {
-		c.r.JSONError(w, http.StatusBadRequest, errs.APIFilterDecoding, err)
+		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
 		return
 	}
 
 	user := &models.User{}
 
 	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
-		c.r.JSONError(w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
 		return
 	}
 
 	// if err := c.v.ValidateUpdateOne(user); err != nil {
-	// 	c.r.JSONError(w, 422, errs.APIValidation, err)
+	// 	c.r.JSONError(ctx, w, 422, errs.APIValidation, err)
 	// 	return
 	// }
 
@@ -460,11 +459,11 @@ func (c *UsersCtrl) Update(ctx context.Context, w http.ResponseWriter, r *http.R
 
 	users, err := c.i.Update(currentUser.ID, user, filter)
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeInvalidFilter:
-			c.r.JSONError(w, 422, errs.APIInvalidFilter, err)
+		switch err.(type) {
+		case errs.ErrInvalidFilter:
+			c.r.JSONError(ctx, w, 422, errs.APIInvalidFilter, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -484,22 +483,22 @@ func (c *UsersCtrl) Update(ctx context.Context, w http.ResponseWriter, r *http.R
 //  400: BodyDecodingResponse
 //  422: ValidationResponse
 //  500: InternalResponse
-func (c *UsersCtrl) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.UserFromCtx(ctx)
+func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	currentUser, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	user := &models.User{}
 
 	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
-		c.r.JSONError(w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
 		return
 	}
 
 	// if err := c.v.ValidateUpdateOne(user); err != nil {
-	// 	c.r.JSONError(w, 422, errs.APIValidation, err)
+	// 	c.r.JSONError(ctx, w, 422, errs.APIValidation, err)
 	// 	return
 	// }
 
@@ -508,11 +507,11 @@ func (c *UsersCtrl) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *h
 
 	user, err = c.i.UpdateByKey(currentUser.ID, "users/"+chi.URLParams(ctx)["key"], user)
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeNotFound:
-			c.r.JSONError(w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch err.(type) {
+		case errs.ErrNotFound:
+			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -532,32 +531,32 @@ func (c *UsersCtrl) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *h
 //  400: BodyDecodingResponse
 //  422: ValidationResponse
 //  500: InternalResponse
-func (c *UsersCtrl) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.UserFromCtx(ctx)
+func (c *Users) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	currentUser, err := middlewares.GetCurrentUser(ctx)
 	if err != nil {
-		c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	pwd := &models.Password{}
 
 	if err := json.NewDecoder(r.Body).Decode(pwd); err != nil {
-		c.r.JSONError(w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
 		return
 	}
 
 	if len(pwd.Password) == 0 {
-		c.r.JSONError(w, 422, errs.APIValidation, errors.New("password cannot be blank"))
+		c.r.JSONError(ctx, w, 422, errs.APIValidation, errors.New("password cannot be blank"))
 		return
 	}
 
 	user, err := c.i.UpdatePassword(currentUser.ID, currentUser.ID, pwd.Password)
 	if err != nil {
-		switch stacktrace.GetCode(err) {
-		case errs.EcodeNotFound:
-			c.r.JSONError(w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch err.(type) {
+		case errs.ErrNotFound:
+			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
 		default:
-			c.r.JSONError(w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}

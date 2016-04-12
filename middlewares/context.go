@@ -3,6 +3,7 @@ package middlewares
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sync"
 
@@ -10,44 +11,79 @@ import (
 
 	"git.wid.la/versatile/versatile-server/models"
 
-	"github.com/palantir/stacktrace"
+	"github.com/Sirupsen/logrus"
 	"github.com/pressly/chi"
+	"github.com/solher/snakepit"
 )
-
-type contextKey int
 
 const (
-	contextUser contextKey = iota
-	contextAccessToken
-	contextSession
+	contextCurrentUser    snakepit.CtxKey = "currentUser"
+	contextAccessToken    snakepit.CtxKey = "accessToken"
+	contextCurrentSession snakepit.CtxKey = "currentSession"
 )
 
-func UserFromCtx(ctx context.Context) (*models.User, error) {
-	v := ctx.Value(contextUser)
-	if v == nil {
-		return nil, stacktrace.NewError("nil user in context")
+func GetCurrentUser(ctx context.Context) (*models.User, error) {
+	if ctx == nil {
+		return nil, errors.New("nil context")
 	}
-	return v.(*models.User), nil
+
+	user, ok := ctx.Value(contextCurrentUser).(*models.User)
+	if !ok {
+		return nil, errors.New("unexpected type")
+	}
+
+	if user == nil {
+		return nil, errors.New("nil value in context")
+	}
+
+	return user, nil
 }
 
-func AccessTokenFromCtx(ctx context.Context) (string, error) {
-	v := ctx.Value(contextAccessToken)
-	if v == nil {
-		return "", stacktrace.NewError("nil access token in context")
+func GetAccessToken(ctx context.Context) (string, error) {
+	if ctx == nil {
+		return "", errors.New("nil context")
 	}
-	return v.(string), nil
+
+	token, ok := ctx.Value(contextAccessToken).(string)
+	if !ok {
+		return "", errors.New("unexpected type")
+	}
+
+	if len(token) == 0 {
+		return "", errors.New("empty value in context")
+	}
+
+	return token, nil
 }
 
-func SessionFromCtx(ctx context.Context) (*models.Session, error) {
-	v := ctx.Value(contextSession)
-	if v == nil {
-		return nil, stacktrace.NewError("nil session in context")
+func GetCurrentSession(ctx context.Context) (*models.Session, error) {
+	if ctx == nil {
+		return nil, errors.New("nil context")
 	}
-	return v.(*models.Session), nil
+
+	session, ok := ctx.Value(contextCurrentSession).(*models.Session)
+	if !ok {
+		return nil, errors.New("unexpected type")
+	}
+
+	if session == nil {
+		return nil, errors.New("nil value in context")
+	}
+
+	return session, nil
 }
 
-func Context(next chi.Handler) chi.Handler {
-	fn := func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+type Context struct{}
+
+func NewContext() func(next chi.Handler) chi.Handler {
+	context := &Context{}
+	return context.middleware
+}
+
+func (c *Context) middleware(next chi.Handler) chi.Handler {
+	return chi.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		log, _ := snakepit.GetLogger(ctx)
+
 		var (
 			user    *models.User
 			token   string
@@ -58,82 +94,92 @@ func Context(next chi.Handler) chi.Handler {
 		wg.Add(3)
 
 		go func() {
-			user = getCurrentUser(r)
+			user = getCurrentUser(r, log)
 			wg.Done()
 		}()
 
 		go func() {
-			token = getAccessToken(r)
+			token = getAccessToken(r, log)
 			wg.Done()
 		}()
 
 		go func() {
-			session = getCurrentSession(r)
+			session = getCurrentSession(r, log)
 			wg.Done()
 		}()
 
 		wg.Wait()
 
-		ctx = context.WithValue(ctx, contextUser, user)
+		ctx = context.WithValue(ctx, contextCurrentUser, user)
 		ctx = context.WithValue(ctx, contextAccessToken, token)
-		ctx = context.WithValue(ctx, contextSession, session)
+		ctx = context.WithValue(ctx, contextCurrentSession, session)
 
 		next.ServeHTTPC(ctx, w, r)
-	}
-
-	return chi.HandlerFunc(fn)
+	})
 }
 
-func getCurrentUser(r *http.Request) *models.User {
+func getCurrentUser(r *http.Request, log *logrus.Entry) *models.User {
 	enc := r.Header.Get("Auth-Server-Payload")
 	if enc == "" {
+		log.WithField("currentUser", enc).Debug("No current user set in context.")
 		return nil
 	}
 
 	data, err := base64.StdEncoding.DecodeString(enc)
 	if err != nil {
+		log.WithField("currentUser", enc).Debug("Could not base64 decode the current user in context.")
 		return nil
 	}
 
 	user := &models.User{}
 
 	if err := json.Unmarshal(data, user); err != nil {
+		log.WithField("currentUser", data).Debug("Could not unmarshal the current user in context.")
 		return nil
 	}
+
+	log.WithField("currentUser", data).Debug("Current user set in context.")
 
 	return user
 }
 
-func getAccessToken(r *http.Request) string {
-	token := ""
-
-	if t := r.Header.Get("Auth-Server-Token"); t != "" {
-		token = t
-	}
+func getAccessToken(r *http.Request, log *logrus.Entry) string {
+	token := r.Header.Get("Auth-Server-Token")
 
 	if t := r.URL.Query().Get("accessToken"); t != "" {
 		token = t
 	}
 
+	if len(token) == 0 {
+		log.WithField("accessToken", "").Debug("No access token set in context.")
+	} else {
+		log.WithField("accessToken", token).Debug("Access token set in context.")
+	}
+
 	return token
 }
 
-func getCurrentSession(r *http.Request) *models.Session {
+func getCurrentSession(r *http.Request, log *logrus.Entry) *models.Session {
 	enc := r.Header.Get("Auth-Server-Session")
 	if enc == "" {
+		log.WithField("currentSession", enc).Debug("No current session set in context.")
 		return nil
 	}
 
 	data, err := base64.StdEncoding.DecodeString(enc)
 	if err != nil {
+		log.WithField("currentSession", enc).Debug("Could not base64 decode the current session in context.")
 		return nil
 	}
 
 	session := &models.Session{}
 
 	if err := json.Unmarshal(data, session); err != nil {
+		log.WithField("currentSession", data).Debug("Could not unmarshal the current session in context.")
 		return nil
 	}
+
+	log.WithField("currentSession", data).Debug("Current session set in context.")
 
 	return session
 }

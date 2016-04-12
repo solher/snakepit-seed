@@ -2,10 +2,10 @@ package interactors
 
 import (
 	"encoding/json"
+	"errors"
 	"sync"
 	"time"
 
-	"github.com/palantir/stacktrace"
 	"git.wid.la/versatile/versatile-server/utils"
 
 	"git.wid.la/versatile/versatile-server/errs"
@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	"git.wid.la/versatile/versatile-server/models"
 	"github.com/solher/arangolite"
 	"github.com/solher/arangolite/filters"
-	"git.wid.la/versatile/versatile-server/models"
 )
 
 type (
@@ -28,7 +28,7 @@ type (
 		DeleteCascade(wg *sync.WaitGroup, users []models.User)
 	}
 
-	UsersInter struct {
+	Users struct {
 		r    QueryRunner
 		gcd  GraphCascadeDeleter
 		scd  SessionsCascadeDeleter
@@ -36,16 +36,16 @@ type (
 	}
 )
 
-func NewUsersInter(r QueryRunner, gcd GraphCascadeDeleter, scd SessionsCascadeDeleter) *UsersInter {
-	inter := &UsersInter{r: r, gcd: gcd, scd: scd}
+func NewUsers(r QueryRunner, gcd GraphCascadeDeleter, scd SessionsCascadeDeleter) *Users {
+	inter := &Users{r: r, gcd: gcd, scd: scd}
 	inter.tPwd.Kill(nil)
 	return inter
 }
 
-func (i *UsersInter) Find(userID string, f *filters.Filter) ([]models.User, error) {
+func (i *Users) Find(userID string, f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	q := arangolite.NewQuery(`
@@ -57,7 +57,7 @@ func (i *UsersInter) Find(userID string, f *filters.Filter) ([]models.User, erro
 
 	r, err := i.r.Run(q)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	users := []models.User{}
@@ -72,9 +72,9 @@ func (i *UsersInter) Find(userID string, f *filters.Filter) ([]models.User, erro
 	return users, nil
 }
 
-func (i *UsersInter) FindByCred(cred *models.Credentials) (*models.User, error) {
+func (i *Users) FindByCred(cred *models.Credentials) (*models.User, error) {
 	if cred == nil {
-		return nil, stacktrace.NewError("nil cred")
+		return nil, errors.New("nil cred")
 	}
 
 	q := arangolite.NewQuery(`
@@ -85,7 +85,7 @@ func (i *UsersInter) FindByCred(cred *models.Credentials) (*models.User, error) 
 
 	r, err := i.r.Run(q)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	users := []models.User{}
@@ -98,19 +98,19 @@ func (i *UsersInter) FindByCred(cred *models.Credentials) (*models.User, error) 
 	}
 
 	if len(users) == 0 {
-		return nil, stacktrace.Propagate(errs.ErrNotFound, "")
+		return nil, errs.NotFound
 	}
 
 	user := &users[0]
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(cred.Password)); err != nil {
-		return nil, stacktrace.PropagateWithCode(err, errs.EcodeNotFound, "Wrong password")
+		return nil, errs.NotFound
 	}
 
 	return user, nil
 }
 
-func (i *UsersInter) FindByKey(userID, id string, f *filters.Filter) (*models.User, error) {
+func (i *Users) FindByKey(userID, id string, f *filters.Filter) (*models.User, error) {
 	if f == nil {
 		f = &filters.Filter{}
 	}
@@ -119,19 +119,19 @@ func (i *UsersInter) FindByKey(userID, id string, f *filters.Filter) (*models.Us
 
 	users, err := i.Find(userID, f)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	if len(users) == 0 {
-		return nil, stacktrace.Propagate(errs.ErrNotFound, "")
+		return nil, errs.NotFound
 	}
 
 	return &users[0], nil
 }
 
-func (i *UsersInter) Create(userID string, users []models.User) ([]models.User, error) {
+func (i *Users) Create(userID string, users []models.User) ([]models.User, error) {
 	if users == nil {
-		return nil, stacktrace.NewError("nil users")
+		return nil, errors.New("nil users")
 	}
 
 	toGenerate := []models.User{}
@@ -146,7 +146,7 @@ func (i *UsersInter) Create(userID string, users []models.User) ([]models.User, 
 		} else {
 			enc, err := bcrypt.GenerateFromPassword([]byte(users[i].Password), 9)
 			if err != nil {
-				return nil, stacktrace.Propagate(err, "")
+				return nil, err
 			}
 
 			users[i].Password = string(enc)
@@ -163,7 +163,7 @@ func (i *UsersInter) Create(userID string, users []models.User) ([]models.User, 
 
 	r, err := i.r.Run(q)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	users = []models.User{}
@@ -223,23 +223,23 @@ func (i *UsersInter) Create(userID string, users []models.User) ([]models.User, 
 	return users, nil
 }
 
-func (i *UsersInter) CreateOne(userID string, user *models.User) (*models.User, error) {
+func (i *Users) CreateOne(userID string, user *models.User) (*models.User, error) {
 	if user == nil {
-		return nil, stacktrace.NewError("nil user")
+		return nil, errors.New("nil user")
 	}
 
 	users, err := i.Create(userID, []models.User{*user})
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	return &users[0], nil
 }
 
-func (i *UsersInter) Delete(userID string, f *filters.Filter) ([]models.User, error) {
+func (i *Users) Delete(userID string, f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	q := arangolite.NewQuery(`
@@ -252,7 +252,7 @@ func (i *UsersInter) Delete(userID string, f *filters.Filter) ([]models.User, er
 
 	r, err := i.r.Run(q)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	users := []models.User{}
@@ -275,30 +275,30 @@ func (i *UsersInter) Delete(userID string, f *filters.Filter) ([]models.User, er
 	return users, nil
 }
 
-func (i *UsersInter) DeleteByKey(userID, id string) (*models.User, error) {
+func (i *Users) DeleteByKey(userID, id string) (*models.User, error) {
 	f := &filters.Filter{}
 	f.Where = append(f.Where, map[string]interface{}{"_id": id})
 
 	users, err := i.Delete(userID, f)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	if len(users) == 0 {
-		return nil, stacktrace.Propagate(errs.ErrNotFound, "")
+		return nil, errs.NotFound
 	}
 
 	return &users[0], nil
 }
 
-func (i *UsersInter) Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error) {
+func (i *Users) Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error) {
 	if user == nil {
-		return nil, stacktrace.NewError("nil user")
+		return nil, errors.New("nil user")
 	}
 
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	q := arangolite.NewQuery(`
@@ -311,7 +311,7 @@ func (i *UsersInter) Update(userID string, user *models.User, f *filters.Filter)
 
 	r, err := i.r.Run(q)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	users := []models.User{}
@@ -326,9 +326,9 @@ func (i *UsersInter) Update(userID string, user *models.User, f *filters.Filter)
 	return users, nil
 }
 
-func (i *UsersInter) UpdateByKey(userID, id string, user *models.User) (*models.User, error) {
+func (i *Users) UpdateByKey(userID, id string, user *models.User) (*models.User, error) {
 	if user == nil {
-		return nil, stacktrace.NewError("nil user")
+		return nil, errors.New("nil user")
 	}
 
 	f := &filters.Filter{}
@@ -336,29 +336,29 @@ func (i *UsersInter) UpdateByKey(userID, id string, user *models.User) (*models.
 
 	users, err := i.Update(userID, user, f)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	if len(users) == 0 {
-		return nil, stacktrace.Propagate(errs.ErrNotFound, "")
+		return nil, errs.NotFound
 	}
 
 	return &users[0], nil
 }
 
-func (i *UsersInter) UpdatePassword(userID, id, password string) (*models.User, error) {
+func (i *Users) UpdatePassword(userID, id, password string) (*models.User, error) {
 	user := &models.User{}
 
 	enc, err := bcrypt.GenerateFromPassword([]byte(password), 11)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	user.Password = string(enc)
 
 	user, err = i.UpdateByKey(userID, id, user)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "")
+		return nil, err
 	}
 
 	return user, nil

@@ -13,7 +13,6 @@ import (
 
 	"github.com/eapache/go-resiliency/retrier"
 	"github.com/juju/ratelimit"
-	"github.com/palantir/stacktrace"
 	"github.com/solher/arangolite"
 )
 
@@ -34,7 +33,7 @@ type (
 	}
 )
 
-func NewRepository(db DatabaseRunner) *Repository {
+func New(db DatabaseRunner) *Repository {
 	cli := gentleman.New()
 	cli.Use(retry.New(retrier.New(retrier.ExponentialBackoff(3, 100*time.Millisecond), nil)))
 
@@ -46,7 +45,7 @@ func (r *Repository) Run(q arangolite.Runnable) (*arangolite.Result, error) {
 
 	result, err := r.db.RunAsync(q)
 	if err != nil {
-		return nil, stacktrace.Propagate(errs.ErrDatabase, err.Error())
+		return nil, err
 	}
 
 	return result, nil
@@ -57,7 +56,7 @@ func (r *Repository) RunSync(q arangolite.Runnable) ([]byte, error) {
 
 	result, err := r.db.Run(q)
 	if err != nil {
-		return nil, stacktrace.Propagate(errs.ErrDatabase, err.Error())
+		return nil, err
 	}
 
 	return result, nil
@@ -76,20 +75,20 @@ func (r *Repository) Send(authPayload, method, url string, data interface{}) ([]
 
 	res, err := req.Send()
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "%s %s failed (network)", method, url)
+		return nil, err
 	}
 
 	if !res.Ok {
 		errRes := &response{}
 		if err := json.Unmarshal(res.Bytes(), errRes); err != nil {
-			return nil, stacktrace.Propagate(errs.ErrServiceError, "%s %s returned a %d", method, url, res.StatusCode)
+			return nil, err
 		}
 
 		if strings.Contains(errRes.Raw, "not found") {
-			return nil, stacktrace.Propagate(errs.ErrNotFound, "%s %s returned a %d", method, url, res.StatusCode)
+			return nil, errs.NotFound
 		}
 
-		return nil, stacktrace.Propagate(errors.New(errRes.Raw), "%s %s returned a %d", method, url, res.StatusCode)
+		return nil, errors.New(errRes.Raw)
 	}
 
 	return res.Bytes(), nil

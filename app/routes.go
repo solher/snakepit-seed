@@ -1,43 +1,47 @@
 package app
 
-import (
-	"github.com/pressly/chi"
-	"git.wid.la/versatile/versatile-server/controllers"
-)
+// func AddRoutes(
+// 	r chi.Router,
+// 	users chi.HandlerFunc,
+// ) {
+// 	r.Handle("/users", users)
+// }
 
-func AddRoutes(
-	r chi.Router,
-	uc *controllers.UsersCtrl,
-	dc *controllers.DashboardsCtrl,
-) {
-	// USERS
-	r.Route("/users", func(r chi.Router) {
-		// CRUD operations
-		r.Route("/", func(r chi.Router) {
-			r.Post("/", uc.Create)
-			r.Get("/", uc.Find)
-			r.Put("/", uc.Update)
-			r.Delete("/", uc.Delete)
-		})
+// func UsersRoutes(router chi.Router) {
+//     		router.Route("/", func(router chi.Router) {
+// 			router.Post("/", u.Create)
+// 			router.Get("/", u.Find)
+// 			router.Put("/", u.Update)
+// 			router.Delete("/", u.Delete)
+// 		})
 
-		// CRUD by key operations
-		r.Route("/:key", func(r chi.Router) {
-			r.Get("/", uc.FindByKey)
-			r.Put("/", uc.UpdateByKey)
-			r.Delete("/", uc.DeleteByKey)
-		})
+// 		// CRUD by key operations
+// 		router.Route("/:key", func(router chi.Router) {
+// 			router.Get("/", u.FindByKey)
+// 			router.Put("/", u.UpdateByKey)
+// 			router.Delete("/", u.DeleteByKey)
+// 		})
 
-		// Custom routes
-		r.Post("/signin", uc.Signin)
-		r.Route("/me", func(r chi.Router) {
-			r.Get("/", uc.FindSelf)
-			r.Get("/session", uc.CurrentSession)
-			r.Post("/signout", uc.Signout)
-			r.Post("/password", uc.UpdateSelfPassword)
-		})
-	})
+// 		// Custom routes
+// 		router.Post("/signin", u.Signin)
+// 		router.Route("/me", func(router chi.Router) {
+// 			router.Get("/", u.FindSelf)
+// 			router.Get("/session", u.CurrentSession)
+// 			router.Post("/signout", u.Signout)
+// 			router.Post("/password", u.UpdateSelfPassword)
+// 		})
+// }
 
-	r.Route("/dashboards", func(r chi.Router) {
-		r.Get("/", dc.Find)
-	})
-}
+// func Dispatcher(
+// 	vip *viper.Viper,
+// 	render *snakepit.Render,
+// 	db *arangolite.DB,
+// ) func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// 	return func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+// 		router := chi.NewRouter()
+
+// 		router.Handle("/users", )
+
+// 		router.ServeHTTPC(ctx, w, r)
+// 	}
+// }

@@ -57,20 +57,27 @@ func NewUsers(
 	return h.builder
 }
 
-func (h *Users) routes(c UsersCtrl) chi.Router {
+func (h *Users) routes(
+	j *snakepit.JSON,
+	c UsersCtrl,
+) chi.Router {
 	r := chi.NewRouter()
 
-	// CRUD operations
-	r.Post("/", c.Create)
-	r.Get("/", c.Find)
-	r.Put("/", c.Update)
-	r.Delete("/", c.Delete)
+	r.Route("/", func(r chi.Router) {
+		r.Use(middlewares.NewAdminOnly(j))
 
-	// CRUD by key operations
-	r.Route("/:key", func(r chi.Router) {
-		r.Get("/", c.FindByKey)
-		r.Put("/", c.UpdateByKey)
-		r.Delete("/", c.DeleteByKey)
+		// CRUD operations
+		r.Post("/", c.Create)
+		r.Get("/", c.Find)
+		r.Put("/", c.Update)
+		r.Delete("/", c.Delete)
+
+		// CRUD by key operations
+		r.Route("/:key", func(r chi.Router) {
+			r.Get("/", c.FindByKey)
+			r.Put("/", c.UpdateByKey)
+			r.Delete("/", c.DeleteByKey)
+		})
 	})
 
 	// Custom routes
@@ -140,5 +147,5 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		validator,
 	)
 
-	h.routes(ctrl).ServeHTTPC(ctx, w, r)
+	h.routes(h.JSON, ctrl).ServeHTTPC(ctx, w, r)
 }

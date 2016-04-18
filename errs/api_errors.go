@@ -9,7 +9,7 @@ var (
 		ErrorCode:   "AUTHORIZATION_REQUIRED",
 	}
 	APIForbidden = snakepit.APIError{
-		Description: "The specified resource was not found or you have insufficient permissions.",
+		Description: "The specified resource was not found or you don't have sufficient permissions.",
 		ErrorCode:   "FORBIDDEN",
 	}
 	APIFilterDecoding = snakepit.APIError{

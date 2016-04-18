@@ -11,16 +11,16 @@ import (
 	"golang.org/x/net/context"
 )
 
-type Gate struct {
+type MainGate struct {
 	json *snakepit.JSON
 }
 
-func NewGate(j *snakepit.JSON) func(next chi.Handler) chi.Handler {
-	gate := &Gate{json: j}
+func NewMainGate(j *snakepit.JSON) func(next chi.Handler) chi.Handler {
+	gate := &MainGate{json: j}
 	return gate.middleware
 }
 
-func (c *Gate) middleware(next chi.Handler) chi.Handler {
+func (c *MainGate) middleware(next chi.Handler) chi.Handler {
 	return chi.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		session, err := GetCurrentSession(ctx)
 		if err != nil {

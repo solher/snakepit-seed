@@ -1,110 +1,91 @@
 package interactors
 
 import (
-	"encoding/json"
-	"errors"
 	"sync"
-	"time"
 
 	"git.wid.la/versatile/versatile-server/utils"
 
 	"git.wid.la/versatile/versatile-server/errs"
 
-	"gopkg.in/tomb.v2"
-
 	"golang.org/x/crypto/bcrypt"
 
 	"git.wid.la/versatile/versatile-server/models"
+	"github.com/Sirupsen/logrus"
+	"github.com/ansel1/merry"
 	"github.com/solher/arangolite"
 	"github.com/solher/arangolite/filters"
+	"github.com/solher/snakepit"
+	"github.com/spf13/viper"
 )
 
 type (
-	GraphCascadeDeleter interface {
-		DeleteCascade(wg *sync.WaitGroup, users []models.User)
-	}
-
 	SessionsCascadeDeleter interface {
 		DeleteCascade(wg *sync.WaitGroup, users []models.User)
 	}
 
 	Users struct {
-		r    QueryRunner
-		gcd  GraphCascadeDeleter
-		scd  SessionsCascadeDeleter
-		tPwd tomb.Tomb
+		snakepit.Interactor
+		Repo          QueryRunner
+		SessionsInter SessionsCascadeDeleter
 	}
 )
 
-func NewUsers(r QueryRunner, gcd GraphCascadeDeleter, scd SessionsCascadeDeleter) *Users {
-	inter := &Users{r: r, gcd: gcd, scd: scd}
-	inter.tPwd.Kill(nil)
-	return inter
+func NewUsers(
+	c *viper.Viper,
+	l *logrus.Entry,
+	r QueryRunner,
+	si SessionsCascadeDeleter,
+) *Users {
+	return &Users{
+		Interactor:    *snakepit.NewInteractor(c, l),
+		Repo:          r,
+		SessionsInter: si,
+	}
 }
 
 func (i *Users) Find(userID string, f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, err
+		return nil, merry.Here(err)
 	}
 
 	q := arangolite.NewQuery(`
 		FOR u IN users
-        FILTER u.createdBy == @userID || u._id == @userID
+        FILTER u._id == @userID
 		%s
 		RETURN u
 	`, filter).Bind("userID", userID)
 
-	r, err := i.r.Run(q)
-	if err != nil {
-		return nil, err
-	}
-
 	users := []models.User{}
 
-	decoder := json.NewDecoder(r.Buffer())
-	for r.HasMore() {
-		batch := []models.User{}
-		decoder.Decode(&batch)
-		users = append(users, batch...)
+	if err := i.Repo.Run(q, &users); err != nil {
+		return nil, merry.Here(err)
 	}
 
 	return users, nil
 }
 
 func (i *Users) FindByCred(cred *models.Credentials) (*models.User, error) {
-	if cred == nil {
-		return nil, errors.New("nil cred")
-	}
-
 	q := arangolite.NewQuery(`
 		FOR u IN users
         FILTER u.email == @email
 		RETURN u
 	`).Bind("email", cred.Email)
 
-	r, err := i.r.Run(q)
-	if err != nil {
-		return nil, err
-	}
-
 	users := []models.User{}
 
-	decoder := json.NewDecoder(r.Buffer())
-	for r.HasMore() {
-		batch := []models.User{}
-		decoder.Decode(&batch)
-		users = append(users, batch...)
+	if err := i.Repo.Run(q, &users); err != nil {
+		return nil, merry.Here(err)
 	}
 
 	if len(users) == 0 {
-		return nil, errs.NotFound
+		return nil, merry.Here(errs.NotFound)
 	}
 
 	user := &users[0]
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(cred.Password)); err != nil {
-		return nil, errs.NotFound
+		return nil, merry.Here(errs.NotFound)
 	}
 
 	return user, nil
@@ -119,39 +100,23 @@ func (i *Users) FindByKey(userID, id string, f *filters.Filter) (*models.User, e
 
 	users, err := i.Find(userID, f)
 	if err != nil {
-		return nil, err
+		return nil, merry.Here(err)
 	}
 
 	if len(users) == 0 {
-		return nil, errs.NotFound
+		return nil, merry.Here(errs.NotFound)
 	}
 
 	return &users[0], nil
 }
 
 func (i *Users) Create(userID string, users []models.User) ([]models.User, error) {
-	if users == nil {
-		return nil, errors.New("nil users")
-	}
-
-	toGenerate := []models.User{}
-
 	for i := range users {
-		if users[i].Key != "" {
-			user := models.User{}
-			user.Key = users[i].Key
-			user.Password = users[i].Password
-			users[i].Password = ""
-			toGenerate = append(toGenerate, user)
-		} else {
-			enc, err := bcrypt.GenerateFromPassword([]byte(users[i].Password), 9)
-			if err != nil {
-				return nil, err
-			}
-
-			users[i].Password = string(enc)
+		enc, err := bcrypt.GenerateFromPassword([]byte(users[i].Password), 11)
+		if err != nil {
+			return nil, merry.Here(err)
 		}
-
+		users[i].Password = string(enc)
 		users[i].OwnerToken = utils.GenToken(32)
 	}
 
@@ -161,85 +126,19 @@ func (i *Users) Create(userID string, users []models.User) ([]models.User, error
 		RETURN NEW
 	`).Bind("users", users)
 
-	r, err := i.r.Run(q)
-	if err != nil {
-		return nil, err
-	}
-
 	users = []models.User{}
 
-	decoder := json.NewDecoder(r.Buffer())
-	for r.HasMore() {
-		batch := []models.User{}
-		decoder.Decode(&batch)
-		users = append(users, batch...)
+	if err := i.Repo.Run(q, &users); err != nil {
+		return nil, merry.Here(err)
 	}
-
-	if i.tPwd.Alive() {
-		i.tPwd.Kill(nil)
-		_ = i.tPwd.Wait()
-	}
-
-	i.tPwd = tomb.Tomb{}
-
-	i.tPwd.Go(func() error {
-		bulk := []models.User{}
-
-		for _, user := range toGenerate {
-			select {
-			case <-i.tPwd.Dying():
-				return nil
-			default:
-			}
-
-			time.Sleep(100 * time.Millisecond)
-
-			enc, err := bcrypt.GenerateFromPassword([]byte(user.Password), 9)
-			if err != nil {
-				return err
-			}
-
-			user.Password = string(enc)
-			bulk = append(bulk, user)
-
-			if len(bulk) == 10 {
-				_, _ = i.r.Run(arangolite.NewQuery(`
-                    FOR u IN @users
-                    UPDATE u IN users
-                `).Bind("users", bulk))
-
-				bulk = []models.User{}
-			}
-		}
-
-		_, _ = i.r.Run(arangolite.NewQuery(`
-            FOR u IN @users
-            UPDATE u IN users
-        `).Bind("users", bulk))
-
-		return nil
-	})
 
 	return users, nil
-}
-
-func (i *Users) CreateOne(userID string, user *models.User) (*models.User, error) {
-	if user == nil {
-		return nil, errors.New("nil user")
-	}
-
-	users, err := i.Create(userID, []models.User{*user})
-	if err != nil {
-		return nil, err
-	}
-
-	return &users[0], nil
 }
 
 func (i *Users) Delete(userID string, f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, err
+		return nil, merry.Here(err)
 	}
 
 	q := arangolite.NewQuery(`
@@ -250,25 +149,16 @@ func (i *Users) Delete(userID string, f *filters.Filter) ([]models.User, error) 
 		RETURN OLD
 	`, filter).Bind("userID", userID)
 
-	r, err := i.r.Run(q)
-	if err != nil {
-		return nil, err
-	}
-
 	users := []models.User{}
 
-	decoder := json.NewDecoder(r.Buffer())
-	for r.HasMore() {
-		batch := []models.User{}
-		decoder.Decode(&batch)
-		users = append(users, batch...)
+	if err := i.Repo.Run(q, &users); err != nil {
+		return nil, merry.Here(err)
 	}
 
 	wg := &sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(1)
 
-	go i.gcd.DeleteCascade(wg, users)
-	go i.scd.DeleteCascade(wg, users)
+	go i.SessionsInter.DeleteCascade(wg, users)
 
 	wg.Wait()
 
@@ -281,84 +171,68 @@ func (i *Users) DeleteByKey(userID, id string) (*models.User, error) {
 
 	users, err := i.Delete(userID, f)
 	if err != nil {
-		return nil, err
+		return nil, merry.Here(err)
 	}
 
 	if len(users) == 0 {
-		return nil, errs.NotFound
+		return nil, merry.Here(errs.NotFound)
 	}
 
 	return &users[0], nil
 }
 
 func (i *Users) Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error) {
-	if user == nil {
-		return nil, errors.New("nil user")
-	}
-
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, err
+		return nil, merry.Here(err)
 	}
 
 	q := arangolite.NewQuery(`
 		FOR u IN users
-        FILTER u.createdBy == @userID || u._id == @userID
+        FILTER u._id == @userID
 		%s
 		UPDATE u with @user IN users
 		RETURN NEW
 	`, filter).Bind("user", user).Bind("userID", userID)
 
-	r, err := i.r.Run(q)
-	if err != nil {
-		return nil, err
-	}
-
 	users := []models.User{}
 
-	decoder := json.NewDecoder(r.Buffer())
-	for r.HasMore() {
-		batch := []models.User{}
-		decoder.Decode(&batch)
-		users = append(users, batch...)
+	if err := i.Repo.Run(q, &users); err != nil {
+		return nil, merry.Here(err)
 	}
 
 	return users, nil
 }
 
 func (i *Users) UpdateByKey(userID, id string, user *models.User) (*models.User, error) {
-	if user == nil {
-		return nil, errors.New("nil user")
-	}
-
 	f := &filters.Filter{}
 	f.Where = append(f.Where, map[string]interface{}{"_id": id})
 
 	users, err := i.Update(userID, user, f)
 	if err != nil {
-		return nil, err
+		return nil, merry.Here(err)
 	}
 
 	if len(users) == 0 {
-		return nil, errs.NotFound
+		return nil, merry.Here(errs.NotFound)
 	}
 
 	return &users[0], nil
 }
 
 func (i *Users) UpdatePassword(userID, id, password string) (*models.User, error) {
-	user := &models.User{}
-
 	enc, err := bcrypt.GenerateFromPassword([]byte(password), 11)
 	if err != nil {
-		return nil, err
+		return nil, merry.Here(err)
 	}
 
-	user.Password = string(enc)
+	user := &models.User{
+		Password: string(enc),
+	}
 
 	user, err = i.UpdateByKey(userID, id, user)
 	if err != nil {
-		return nil, err
+		return nil, merry.Here(err)
 	}
 
 	return user, nil

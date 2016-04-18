@@ -17,8 +17,8 @@ type User struct {
 	OwnerToken string `json:"ownerToken,omitempty"`
 	// The user password.
 	Password string `json:"password,omitempty"`
-	// Indicates if the user can add/update/delete users.
-	IsAdmin bool `json:"isAdmin,omitempty"`
+	// The role name of the user.
+	Role string `json:"role"`
 }
 
 // swagger:response UsersResponse

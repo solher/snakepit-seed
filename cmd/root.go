@@ -1,12 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
+	"git.wid.la/versatile/versatile-server/constants"
 	"github.com/solher/snakepit/root"
 	"github.com/solher/snakepit/run"
-	"git.wid.la/versatile/versatile-server/constants"
 )
 
 func init() {
@@ -16,7 +13,7 @@ func init() {
 	root.Cmd.AddCommand(run.Cmd)
 
 	// DATABASE
-	root.Cmd.PersistentFlags().String("dbUrl", "", "database URL")
+	root.Cmd.PersistentFlags().String("dbUrl", "http://localhost:8000", "database URL")
 	root.Viper.BindPFlag(constants.DBURL, root.Cmd.PersistentFlags().Lookup("dbUrl"))
 	root.Viper.RegisterAlias(constants.DBURL, "ARANGODB_PORT")
 
@@ -37,8 +34,5 @@ func init() {
 }
 
 func Execute() {
-	if err := root.Cmd.Execute(); err != nil {
-		fmt.Printf(err.Error())
-		os.Exit(-1)
-	}
+	root.Execute()
 }

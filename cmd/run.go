@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"github.com/solher/snakepit/root"
-	"github.com/solher/snakepit/run"
 	"git.wid.la/versatile/versatile-server/app"
 	"git.wid.la/versatile/versatile-server/constants"
+	"github.com/solher/snakepit/root"
+	"github.com/solher/snakepit/run"
 )
 
 func init() {

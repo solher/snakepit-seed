@@ -2,28 +2,34 @@ package controllers
 
 import (
 	"encoding/json"
-	"errors"
-	"io/ioutil"
 	"net/http"
 
 	"golang.org/x/net/context"
 
 	"git.wid.la/versatile/versatile-server/errs"
-	"git.wid.la/versatile/versatile-server/middlewares"
 	"git.wid.la/versatile/versatile-server/models"
-	"github.com/pressly/chi"
 
+	"github.com/Sirupsen/logrus"
+	"github.com/ansel1/merry"
 	"github.com/solher/arangolite/filters"
 	"github.com/solher/snakepit"
+	"github.com/spf13/viper"
 )
 
 type (
+	UsersContext struct {
+		AccessToken    string
+		CurrentUser    *models.User
+		CurrentSession *models.Session
+		URLParams      map[string]string
+		Filter         *filters.Filter
+	}
+
 	UsersInter interface {
 		Find(userID string, f *filters.Filter) ([]models.User, error)
 		FindByCred(cred *models.Credentials) (*models.User, error)
 		FindByKey(userID, id string, f *filters.Filter) (*models.User, error)
 		Create(userID string, users []models.User) ([]models.User, error)
-		CreateOne(userID string, user *models.User) (*models.User, error)
 		Delete(userID string, f *filters.Filter) ([]models.User, error)
 		DeleteByKey(userID, id string) (*models.User, error)
 		Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error)
@@ -37,26 +43,36 @@ type (
 	}
 
 	UsersValidator interface {
-		ValidateSignin(cred *models.Credentials) error
-		ValidateCreation(users []models.User) error
-		ValidateUpdate(user *models.User) error
+		Signin(cred *models.Credentials) error
+		Creation(users []models.User) error
+		Update(user *models.User) error
 	}
 
 	Users struct {
-		i   UsersInter
-		srw SessionsReaderWriter
-		v   UsersValidator
-		r   *snakepit.Render
+		snakepit.Controller
+		Context       UsersContext
+		Inter         UsersInter
+		SessionsInter SessionsReaderWriter
+		Validator     UsersValidator
 	}
 )
 
 func NewUsers(
+	c *viper.Viper,
+	l *logrus.Entry,
+	j *snakepit.JSON,
+	ctx UsersContext,
 	i UsersInter,
-	srw SessionsReaderWriter,
+	si SessionsReaderWriter,
 	v UsersValidator,
-	r *snakepit.Render,
 ) *Users {
-	return &Users{i: i, srw: srw, v: v, r: r}
+	return &Users{
+		Controller:    *snakepit.NewController(c, l, j),
+		Context:       ctx,
+		Inter:         i,
+		SessionsInter: si,
+		Validator:     v,
+	}
 }
 
 // Signin swagger:route POST /signin Users UsersSignin
@@ -74,23 +90,22 @@ func NewUsers(
 func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	cred := &models.Credentials{}
 
-	if err := json.NewDecoder(r.Body).Decode(cred); err != nil {
-		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, cred); !ok {
 		return
 	}
 
-	if err := c.v.ValidateSignin(cred); err != nil {
-		c.r.JSONError(ctx, w, 422, errs.APIValidation, err)
+	if err := c.Validator.Signin(cred); err != nil {
+		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 
-	user, err := c.i.FindByCred(cred)
+	user, err := c.Inter.FindByCred(cred)
 	if err != nil {
-		switch err.(type) {
-		case errs.ErrNotFound:
-			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch {
+		case merry.Is(err, errs.NotFound):
+			c.JSON.RenderError(ctx, w, http.StatusForbidden, errs.APIForbidden, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -106,16 +121,16 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		Payload:    string(m),
 	}
 
-	session, err = c.srw.Create(session)
+	session, err = c.SessionsInter.Create(session)
 	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	session.Policies = nil
 	session.Payload = ""
 
-	c.r.JSON(w, http.StatusCreated, session)
+	c.JSON.Render(ctx, w, http.StatusCreated, session)
 }
 
 // CurrentSession swagger:route GET /me/session Users UsersCurrentSession
@@ -129,13 +144,7 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //  401: UnauthorizedResponse
 //  500: InternalResponse
 func (c *Users) CurrentSession(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	session, err := middlewares.GetCurrentSession(ctx)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	c.r.JSON(w, http.StatusOK, session)
+	c.JSON.Render(ctx, w, http.StatusOK, c.Context.CurrentSession)
 }
 
 // Signout swagger:route POST /me/signout Users UsersSignout
@@ -149,22 +158,16 @@ func (c *Users) CurrentSession(ctx context.Context, w http.ResponseWriter, r *ht
 //  401: UnauthorizedResponse
 //  500: InternalResponse
 func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	token, err := middlewares.GetAccessToken(ctx)
+	session, err := c.SessionsInter.Delete(c.Context.AccessToken)
 	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	session, err := c.srw.Delete(token)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
 	session.Policies = nil
 	session.Payload = ""
 
-	c.r.JSON(w, http.StatusOK, session)
+	c.JSON.Render(ctx, w, http.StatusOK, session)
 }
 
 // Find swagger:route GET / Users UsersFind
@@ -180,25 +183,13 @@ func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Requ
 //  422: InvalidFilterResponse
 //  500: InternalResponse
 func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.GetCurrentUser(ctx)
+	users, err := c.Inter.Find(c.Context.CurrentUser.ID, c.Context.Filter)
 	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	filter, err := filters.FromRequest(r)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
-		return
-	}
-
-	users, err := c.i.Find(currentUser.ID, filter)
-	if err != nil {
-		switch err.(type) {
-		case errs.ErrInvalidFilter:
-			c.r.JSONError(ctx, w, 422, errs.APIInvalidFilter, err)
+		switch {
+		case merry.Is(err, errs.InvalidFilter):
+			c.JSON.RenderError(ctx, w, 422, errs.APIInvalidFilter, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
@@ -207,7 +198,7 @@ func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request
 		users[i].Password = ""
 	}
 
-	c.r.JSON(w, http.StatusOK, users)
+	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
 // FindSelf swagger:route GET /me Users UsersFindSelf
@@ -220,26 +211,20 @@ func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request
 //  200: UserResponse
 //  401: UnauthorizedResponse
 func (c *Users) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	user, err := middlewares.GetCurrentUser(ctx)
+	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, c.Context.CurrentUser.ID, nil)
 	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	user, err = c.i.FindByKey(user.ID, user.ID, nil)
-	if err != nil {
-		switch err.(type) {
-		case errs.ErrNotFound:
-			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch {
+		case merry.Is(err, errs.NotFound):
+			c.JSON.RenderError(ctx, w, http.StatusForbidden, errs.APIForbidden, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
 
 	user.Password = ""
 
-	c.r.JSON(w, http.StatusOK, user)
+	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
 // FindByKey swagger:route GET /{key} Users UsersFindByKey
@@ -255,34 +240,22 @@ func (c *Users) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Req
 //  422: InvalidFilterResponse
 //  500: InternalResponse
 func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.GetCurrentUser(ctx)
+	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"], c.Context.Filter)
 	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	filter, err := filters.FromRequest(r)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
-		return
-	}
-
-	user, err := c.i.FindByKey(currentUser.ID, "users/"+chi.URLParams(ctx)["key"], filter)
-	if err != nil {
-		switch err.(type) {
-		case errs.ErrInvalidFilter:
-			c.r.JSONError(ctx, w, 422, errs.APIInvalidFilter, err)
-		case errs.ErrNotFound:
-			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch {
+		case merry.Is(err, errs.InvalidFilter):
+			c.JSON.RenderError(ctx, w, 422, errs.APIInvalidFilter, err)
+		case merry.Is(err, errs.NotFound):
+			c.JSON.RenderError(ctx, w, http.StatusForbidden, errs.APIForbidden, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
 
 	user.Password = ""
 
-	c.r.JSON(w, http.StatusOK, user)
+	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
 // Create swagger:route POST / Users UsersCreate
@@ -298,50 +271,28 @@ func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Re
 //  422: ValidationResponse
 //  500: InternalResponse
 func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.GetCurrentUser(ctx)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	user := &models.User{}
 	var users []models.User
 
-	buffer, _ := ioutil.ReadAll(r.Body)
-
-	if err := json.Unmarshal(buffer, user); err != nil {
-		if err := json.Unmarshal(buffer, &users); err != nil {
-			c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
-			return
-		}
-	}
-
-	if users == nil {
-		err = c.v.ValidateCreation([]models.User{*user})
-	} else {
-		err = c.v.ValidateCreation(users)
-	}
-
-	if err != nil {
-		c.r.JSONError(ctx, w, 422, errs.APIValidation, err)
+	ok, bulk := c.JSON.UnmarshalBodyBulk(ctx, w, r.Body, &users)
+	if !ok {
 		return
 	}
 
-	if users == nil {
-		user, err = c.i.CreateOne(currentUser.ID, user)
-	} else {
-		users, err = c.i.Create(currentUser.ID, users)
-	}
-
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+	if err := c.Validator.Creation(users); err != nil {
+		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 
-	if users == nil {
-		c.r.JSON(w, http.StatusCreated, user)
+	users, err := c.Inter.Create(c.Context.CurrentUser.ID, users)
+	if err != nil {
+		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+		return
+	}
+
+	if bulk {
+		c.JSON.Render(ctx, w, http.StatusCreated, users)
 	} else {
-		c.r.JSON(w, http.StatusCreated, users)
+		c.JSON.Render(ctx, w, http.StatusCreated, users[0])
 	}
 }
 
@@ -358,30 +309,18 @@ func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //  422: InvalidFilterResponse
 //  500: InternalResponse
 func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.GetCurrentUser(ctx)
+	users, err := c.Inter.Delete(c.Context.CurrentUser.ID, c.Context.Filter)
 	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	filter, err := filters.FromRequest(r)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
-		return
-	}
-
-	users, err := c.i.Delete(currentUser.ID, filter)
-	if err != nil {
-		switch err.(type) {
-		case errs.ErrInvalidFilter:
-			c.r.JSONError(ctx, w, 422, errs.APIInvalidFilter, err)
+		switch {
+		case merry.Is(err, errs.InvalidFilter):
+			c.JSON.RenderError(ctx, w, 422, errs.APIInvalidFilter, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
 
-	c.r.JSON(w, http.StatusOK, users)
+	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
 // DeleteByKey swagger:route DELETE /{key} Users UsersDeleteByKey
@@ -395,24 +334,18 @@ func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //  401: UnauthorizedResponse
 //  500: InternalResponse
 func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.GetCurrentUser(ctx)
+	user, err := c.Inter.DeleteByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"])
 	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	user, err := c.i.DeleteByKey(currentUser.ID, "users/"+chi.URLParams(ctx)["key"])
-	if err != nil {
-		switch err.(type) {
-		case errs.ErrNotFound:
-			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch {
+		case merry.Is(err, errs.NotFound):
+			c.JSON.RenderError(ctx, w, http.StatusForbidden, errs.APIForbidden, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
 
-	c.r.JSON(w, http.StatusOK, user)
+	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
 // Update swagger:route PUT / Users UsersUpdate
@@ -430,45 +363,31 @@ func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.
 //  422: InvalidFilterResponse
 //  500: InternalResponse
 func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.GetCurrentUser(ctx)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
-	filter, err := filters.FromRequest(r)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
-		return
-	}
-
 	user := &models.User{}
 
-	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
-		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, user); !ok {
 		return
 	}
-
-	// if err := c.v.ValidateUpdateOne(user); err != nil {
-	// 	c.r.JSONError(ctx, w, 422, errs.APIValidation, err)
+	// if err := c.Validator.UpdateOne(user); err != nil {
+	// 	c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 	// 	return
 	// }
 
 	user.Key = ""
 	user.Password = ""
 
-	users, err := c.i.Update(currentUser.ID, user, filter)
+	users, err := c.Inter.Update(c.Context.CurrentUser.ID, user, c.Context.Filter)
 	if err != nil {
-		switch err.(type) {
-		case errs.ErrInvalidFilter:
-			c.r.JSONError(ctx, w, 422, errs.APIInvalidFilter, err)
+		switch {
+		case merry.Is(err, errs.InvalidFilter):
+			c.JSON.RenderError(ctx, w, 422, errs.APIInvalidFilter, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
 
-	c.r.JSON(w, http.StatusOK, users)
+	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
 // UpdateByKey swagger:route PUT /{key} Users UsersUpdateByKey
@@ -484,39 +403,32 @@ func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //  422: ValidationResponse
 //  500: InternalResponse
 func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.GetCurrentUser(ctx)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
 	user := &models.User{}
 
-	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
-		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, user); !ok {
 		return
 	}
 
-	// if err := c.v.ValidateUpdateOne(user); err != nil {
-	// 	c.r.JSONError(ctx, w, 422, errs.APIValidation, err)
+	// if err := c.Validator.UpdateOne(user); err != nil {
+	// 	c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 	// 	return
 	// }
 
 	user.Key = ""
 	user.Password = ""
 
-	user, err = c.i.UpdateByKey(currentUser.ID, "users/"+chi.URLParams(ctx)["key"], user)
+	user, err := c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"], user)
 	if err != nil {
-		switch err.(type) {
-		case errs.ErrNotFound:
-			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch {
+		case merry.Is(err, errs.NotFound):
+			c.JSON.RenderError(ctx, w, http.StatusForbidden, errs.APIForbidden, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
 
-	c.r.JSON(w, http.StatusOK, user)
+	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
 // UpdateSelfPassword swagger:route POST /me/password Users UsersUpdateSelfPassword
@@ -532,38 +444,31 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 //  422: ValidationResponse
 //  500: InternalResponse
 func (c *Users) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	currentUser, err := middlewares.GetCurrentUser(ctx)
-	if err != nil {
-		c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		return
-	}
-
 	pwd := &models.Password{}
 
-	if err := json.NewDecoder(r.Body).Decode(pwd); err != nil {
-		c.r.JSONError(ctx, w, http.StatusBadRequest, errs.APIBodyDecoding, err)
+	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, pwd); !ok {
 		return
 	}
 
 	if len(pwd.Password) == 0 {
-		c.r.JSONError(ctx, w, 422, errs.APIValidation, errors.New("password cannot be blank"))
+		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, merry.New("password cannot be blank"))
 		return
 	}
 
-	user, err := c.i.UpdatePassword(currentUser.ID, currentUser.ID, pwd.Password)
+	user, err := c.Inter.UpdatePassword(c.Context.CurrentUser.ID, c.Context.CurrentUser.ID, pwd.Password)
 	if err != nil {
-		switch err.(type) {
-		case errs.ErrNotFound:
-			c.r.JSONError(ctx, w, http.StatusUnauthorized, errs.APIUnauthorized, err)
+		switch {
+		case merry.Is(err, errs.NotFound):
+			c.JSON.RenderError(ctx, w, http.StatusForbidden, errs.APIForbidden, err)
 		default:
-			c.r.JSONError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
 		return
 	}
 
 	user.Password = ""
 
-	c.r.JSON(w, http.StatusOK, user)
+	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
 // swagger:parameters Users UsersSignout UsersFindSelf

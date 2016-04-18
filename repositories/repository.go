@@ -2,94 +2,98 @@ package repositories
 
 import (
 	"encoding/json"
-	"errors"
-	"strings"
 	"time"
 
 	"git.wid.la/versatile/versatile-server/errs"
 
-	"gopkg.in/h2non/gentleman-retry.v0"
 	"gopkg.in/h2non/gentleman.v0"
 
-	"github.com/eapache/go-resiliency/retrier"
-	"github.com/juju/ratelimit"
+	"github.com/Sirupsen/logrus"
+	"github.com/ansel1/merry"
 	"github.com/solher/arangolite"
+	"github.com/solher/snakepit"
+	"github.com/spf13/viper"
 )
 
 type (
 	response struct {
-		Raw string `json:"raw,omitempty"`
+		Description string `json:description,omitempty"`
 	}
 
 	DatabaseRunner interface {
-		RunAsync(q arangolite.Runnable) (*arangolite.Result, error)
 		Run(q arangolite.Runnable) ([]byte, error)
 	}
 
 	Repository struct {
-		db DatabaseRunner
-		c  *gentleman.Client
-		b  *ratelimit.Bucket
+		snakepit.Repository
+		DB     DatabaseRunner
+		Client *gentleman.Client
 	}
 )
 
-func New(db DatabaseRunner) *Repository {
-	cli := gentleman.New()
-	cli.Use(retry.New(retrier.New(retrier.ExponentialBackoff(3, 100*time.Millisecond), nil)))
-
-	return &Repository{db: db, c: cli, b: ratelimit.NewBucket(10*time.Millisecond, 10)}
+func NewRepository(
+	c *viper.Viper,
+	l *logrus.Entry,
+	j *snakepit.JSON,
+	db DatabaseRunner,
+	cli *gentleman.Client,
+) *Repository {
+	return &Repository{
+		Repository: *snakepit.NewRepository(c, l, j),
+		DB:         db,
+		Client:     cli,
+	}
 }
 
-func (r *Repository) Run(q arangolite.Runnable) (*arangolite.Result, error) {
-	r.b.Wait(1)
-
-	result, err := r.db.RunAsync(q)
+func (r *Repository) Run(q arangolite.Runnable, response interface{}) error {
+	start := time.Now()
+	raw, err := r.DB.Run(q)
 	if err != nil {
-		return nil, err
+		return merry.Here(err)
+	}
+	snakepit.LogTime(r.Logger, "Database requesting", start)
+
+	if err := r.JSON.Unmarshal(r.Logger, "Database response", raw, response); err != nil {
+		return merry.Here(err)
 	}
 
-	return result, nil
+	return nil
 }
 
-func (r *Repository) RunSync(q arangolite.Runnable) ([]byte, error) {
-	r.b.Wait(1)
-
-	result, err := r.db.Run(q)
-	if err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-func (r *Repository) Send(authPayload, method, url string, data interface{}) ([]byte, error) {
-	req := r.c.Request()
+func (r *Repository) Send(authPayload, method, url string, body, response interface{}) error {
+	req := r.Client.Request()
 	req.AddHeader("Auth-Server-Payload", authPayload)
 	req.Method(method)
 	if method == "POST" {
-		req.JSON(data)
+		req.JSON(body)
 	}
 	req.URL(url)
 
-	r.b.Wait(1)
-
+	start := time.Now()
 	res, err := req.Send()
 	if err != nil {
-		return nil, err
+		return merry.Here(err)
 	}
+	snakepit.LogTime(r.Logger, "HTTP requesting", start)
 
 	if !res.Ok {
-		errRes := &response{}
+		errRes := &struct {
+			Description string `json:description,omitempty"`
+		}{}
 		if err := json.Unmarshal(res.Bytes(), errRes); err != nil {
-			return nil, err
+			return merry.Here(err)
 		}
 
-		if strings.Contains(errRes.Raw, "not found") {
-			return nil, errs.NotFound
+		if res.StatusCode == 403 || res.StatusCode == 404 {
+			return merry.Here(errs.NotFound)
 		}
 
-		return nil, errors.New(errRes.Raw)
+		return merry.New(errRes.Description)
 	}
 
-	return res.Bytes(), nil
+	if err := r.JSON.Unmarshal(r.Logger, "HTTP response", res.Bytes(), response); err != nil {
+		return merry.Here(err)
+	}
+
+	return nil
 }

@@ -1,0 +1,20 @@
+package: github.com/solher/snakepit-seed
+import:
+- package: github.com/Sirupsen/logrus
+- package: github.com/ansel1/merry
+- package: github.com/pressly/chi
+- package: github.com/solher/arangolite
+  subpackages:
+  - filters
+- package: github.com/solher/snakepit
+  subpackages:
+  - root
+  - run
+- package: github.com/spf13/viper
+- package: golang.org/x/crypto
+  subpackages:
+  - /bcrypt
+- package: golang.org/x/net
+  subpackages:
+  - /context
+- package: gopkg.in/h2non/gentleman.v0

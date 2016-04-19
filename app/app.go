@@ -5,9 +5,9 @@ import (
 
 	"gopkg.in/h2non/gentleman.v0"
 
-	"git.wid.la/versatile/versatile-server/constants"
-	"git.wid.la/versatile/versatile-server/handlers"
-	"git.wid.la/versatile/versatile-server/middlewares"
+	"github.com/solher/snakepit-seed/constants"
+	"github.com/solher/snakepit-seed/handlers"
+	"github.com/solher/snakepit-seed/middlewares"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pressly/chi"

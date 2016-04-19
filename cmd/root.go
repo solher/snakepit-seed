@@ -1,14 +1,14 @@
 package cmd
 
 import (
-	"git.wid.la/versatile/versatile-server/constants"
+	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit/root"
 	"github.com/solher/snakepit/run"
 )
 
 func init() {
-	root.Cmd.Use = "versatile-server"
-	root.Cmd.Short = "A custom description !"
+	root.Cmd.Use = "snakepit-seed"
+	root.Cmd.Short = "A simple Snakepit seed."
 
 	root.Cmd.AddCommand(run.Cmd)
 

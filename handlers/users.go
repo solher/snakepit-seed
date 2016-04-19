@@ -5,15 +5,15 @@ import (
 
 	"gopkg.in/h2non/gentleman.v0"
 
-	"git.wid.la/versatile/versatile-server/controllers"
-	"git.wid.la/versatile/versatile-server/errs"
-	"git.wid.la/versatile/versatile-server/interactors"
-	"git.wid.la/versatile/versatile-server/middlewares"
-	"git.wid.la/versatile/versatile-server/repositories"
-	"git.wid.la/versatile/versatile-server/validators"
 	"github.com/pressly/chi"
 	"github.com/solher/arangolite/filters"
 	"github.com/solher/snakepit"
+	"github.com/solher/snakepit-seed/controllers"
+	"github.com/solher/snakepit-seed/errs"
+	"github.com/solher/snakepit-seed/interactors"
+	"github.com/solher/snakepit-seed/middlewares"
+	"github.com/solher/snakepit-seed/repositories"
+	"github.com/solher/snakepit-seed/validators"
 	"github.com/spf13/viper"
 	"golang.org/x/net/context"
 )
@@ -100,8 +100,6 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	currentUser, _ := middlewares.GetCurrentUser(ctx)
 	currentSession, _ := middlewares.GetCurrentSession(ctx)
 
-	urlParams := chi.URLParams(ctx)
-
 	filter, err := filters.FromRequest(r)
 	if err != nil {
 		h.JSON.RenderError(ctx, w, http.StatusBadRequest, errs.APIFilterDecoding, err)
@@ -112,7 +110,7 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		AccessToken:    accessToken,
 		CurrentUser:    currentUser,
 		CurrentSession: currentSession,
-		URLParams:      urlParams,
+		Key:            chi.URLParam(ctx, "key"),
 		Filter:         filter,
 	}
 

@@ -3,7 +3,7 @@ package utils
 import (
 	"crypto/rand"
 
-	"git.wid.la/versatile/versatile-server/errs"
+	"github.com/solher/snakepit-seed/errs"
 	"github.com/solher/arangolite/filters"
 )
 

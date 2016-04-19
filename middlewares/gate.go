@@ -3,7 +3,7 @@ package middlewares
 import (
 	"net/http"
 
-	"git.wid.la/versatile/versatile-server/errs"
+	"github.com/solher/snakepit-seed/errs"
 
 	"github.com/ansel1/merry"
 	"github.com/pressly/chi"

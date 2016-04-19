@@ -3,13 +3,13 @@ package interactors
 import (
 	"sync"
 
-	"git.wid.la/versatile/versatile-server/utils"
+	"github.com/solher/snakepit-seed/utils"
 
-	"git.wid.la/versatile/versatile-server/errs"
+	"github.com/solher/snakepit-seed/errs"
 
 	"golang.org/x/crypto/bcrypt"
 
-	"git.wid.la/versatile/versatile-server/models"
+	"github.com/solher/snakepit-seed/models"
 	"github.com/Sirupsen/logrus"
 	"github.com/ansel1/merry"
 	"github.com/solher/arangolite"

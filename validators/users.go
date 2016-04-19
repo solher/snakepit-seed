@@ -3,9 +3,9 @@ package validators
 import (
 	"github.com/solher/snakepit"
 
-	"git.wid.la/versatile/versatile-server/errs"
-	"git.wid.la/versatile/versatile-server/middlewares"
-	"git.wid.la/versatile/versatile-server/models"
+	"github.com/solher/snakepit-seed/errs"
+	"github.com/solher/snakepit-seed/middlewares"
+	"github.com/solher/snakepit-seed/models"
 )
 
 type (

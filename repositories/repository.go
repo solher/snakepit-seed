@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"git.wid.la/versatile/versatile-server/errs"
+	"github.com/solher/snakepit-seed/errs"
 
 	"gopkg.in/h2non/gentleman.v0"
 

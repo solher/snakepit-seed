@@ -7,7 +7,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	"git.wid.la/versatile/versatile-server/models"
+	"github.com/solher/snakepit-seed/models"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/ansel1/merry"

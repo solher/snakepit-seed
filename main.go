@@ -1,8 +1,8 @@
 //go:generate swagger generate spec -o swagger.json
 
-// Snakepit boilerplate
+// Snakepit seed
 //
-// A simple Snakepit boilerplate.
+// A simple Snakepit seed.
 //
 // Schemes: https
 // BasePath: /
@@ -15,8 +15,8 @@
 // - application/json
 //
 // swagger:meta
-package main // import "git.wid.la/versatile/versatile-server"
-import "git.wid.la/versatile/versatile-server/cmd"
+package main // import "github.com/solher/snakepit-seed"
+import "github.com/solher/snakepit-seed/cmd"
 
 func main() {
 	cmd.Execute()

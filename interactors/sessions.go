@@ -9,8 +9,8 @@ import (
 	"github.com/solher/snakepit"
 	"github.com/spf13/viper"
 
-	"git.wid.la/versatile/versatile-server/constants"
-	"git.wid.la/versatile/versatile-server/models"
+	"github.com/solher/snakepit-seed/constants"
+	"github.com/solher/snakepit-seed/models"
 )
 
 type (

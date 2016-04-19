@@ -6,9 +6,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"git.wid.la/versatile/versatile-server/constants"
-	"git.wid.la/versatile/versatile-server/errs"
-	"git.wid.la/versatile/versatile-server/models"
+	"github.com/solher/snakepit-seed/constants"
+	"github.com/solher/snakepit-seed/errs"
+	"github.com/solher/snakepit-seed/models"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/ansel1/merry"
@@ -22,7 +22,7 @@ type (
 		AccessToken    string
 		CurrentUser    *models.User
 		CurrentSession *models.Session
-		URLParams      map[string]string
+		Key            string
 		Filter         *filters.Filter
 	}
 
@@ -231,7 +231,7 @@ func (c *Users) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Req
 // Responses:
 //  200: UserResponse
 func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"], c.Context.Filter)
+	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, c.Context.Filter)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.InvalidFilter):
@@ -315,7 +315,7 @@ func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reque
 // Responses:
 //  200: UserResponse
 func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	user, err := c.Inter.DeleteByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"])
+	user, err := c.Inter.DeleteByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):
@@ -391,7 +391,7 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 	user.Password = ""
 	user.OwnerToken = ""
 
-	user, err := c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"], user)
+	user, err := c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, user)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):

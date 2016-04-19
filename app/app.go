@@ -38,7 +38,6 @@ func Builder(v *viper.Viper, l *logrus.Logger) http.Handler {
 	router.Use(timer.Start)
 	router.Use(snakepit.NewRecoverer(json))
 	router.Use(middlewares.NewContext())
-	router.Use(middlewares.NewMainGate(json))
 	router.Use(timer.End)
 
 	router.Mount("/users", handlers.NewUsers(v, json, db, cli))

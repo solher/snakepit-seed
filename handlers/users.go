@@ -80,14 +80,17 @@ func (h *Users) routes(
 		})
 	})
 
-	// Custom routes
-	r.Post("/signin", c.Signin)
+	// Custom self routes
 	r.Route("/me", func(r chi.Router) {
+		r.Use(middlewares.NewAuthenticatedOnly(j))
+
 		r.Get("/", c.FindSelf)
 		r.Get("/session", c.CurrentSession)
 		r.Post("/signout", c.Signout)
 		r.Post("/password", c.UpdateSelfPassword)
 	})
+
+	r.Post("/signin", c.Signin)
 
 	return r
 }

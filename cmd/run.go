@@ -10,6 +10,10 @@ import (
 func init() {
 	run.Builder = app.Builder
 
+	// APP
+	run.Cmd.PersistentFlags().String("policyName", "snakepit", "policy created when sign in")
+	root.Viper.BindPFlag(constants.PolicyName, run.Cmd.PersistentFlags().Lookup("policyName"))
+
 	// SERVICES
 	run.Cmd.PersistentFlags().String("authServerUrl", "", "auth server URL")
 	root.Viper.BindPFlag(constants.AuthServerURL, run.Cmd.PersistentFlags().Lookup("authServerUrl"))

@@ -117,7 +117,7 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	session := &models.Session{
 		OwnerToken: user.OwnerToken,
 		Agent:      r.UserAgent(),
-		Policies:   []string{"co-net"},
+		Policies:   []string{c.Constants.GetString(constants.PolicyName)},
 		Payload:    string(m),
 	}
 

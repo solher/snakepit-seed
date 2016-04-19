@@ -3,8 +3,10 @@ package errs
 const (
 	FieldEmail    = "EMAIL"
 	FieldPassword = "PASSWORD"
+	FieldRole     = "ROLE"
 )
 
 const (
-	ValidBlank = "BLANK"
+	ValidBlank   = "BLANK"
+	ValidInvalid = "INVALID"
 )

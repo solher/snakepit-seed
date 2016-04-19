@@ -4,6 +4,7 @@ import (
 	"github.com/solher/snakepit"
 
 	"git.wid.la/versatile/versatile-server/errs"
+	"git.wid.la/versatile/versatile-server/middlewares"
 	"git.wid.la/versatile/versatile-server/models"
 )
 
@@ -25,9 +26,13 @@ func (v *Users) Creation(users []models.User) error {
 			return snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank)
 		}
 
-		// if err := v.ValidateEmailUniqueness(user); err != nil {
-		// 	return err
-		// }
+		if len(user.Role) == 0 {
+			return snakepit.NewValidationError(errs.FieldRole, errs.ValidBlank)
+		}
+
+		if err := v.RoleExistence(middlewares.Role(user.Role)); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -54,7 +59,26 @@ func (v *Users) Update(user *models.User) error {
 		return snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank)
 	}
 
+	if len(user.Role) == 0 {
+		return snakepit.NewValidationError(errs.FieldRole, errs.ValidBlank)
+	}
+
+	if err := v.RoleExistence(middlewares.Role(user.Role)); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func (v *Users) RoleExistence(role middlewares.Role) error {
+	switch role {
+	case middlewares.Admin,
+		middlewares.Developer,
+		middlewares.User:
+		return nil
+	}
+
+	return snakepit.NewValidationError(errs.FieldRole, errs.ValidInvalid)
 }
 
 // func (v *Users) ValidateEmailUniqueness(user *models.User) error {

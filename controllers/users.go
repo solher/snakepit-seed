@@ -112,7 +112,12 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	user.Password = ""
 
-	m, _ := json.Marshal(user)
+	payload := &models.AuthServerPayload{
+		User: user,
+		Role: user.Role,
+	}
+
+	m, _ := json.Marshal(payload)
 
 	session := &models.Session{
 		OwnerToken: user.OwnerToken,

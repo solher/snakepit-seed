@@ -88,7 +88,7 @@ func (r *Repository) Send(authPayload, method, url string, body, response interf
 			return merry.Here(errs.NotFound)
 		}
 
-		return merry.New(errRes.Description)
+		return merry.Errorf("From distant service: %s", errRes.Description)
 	}
 
 	if err := r.JSON.Unmarshal(r.Logger, "HTTP response", res.Bytes(), response); err != nil {

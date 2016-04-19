@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/net/context"
 
+	"git.wid.la/versatile/versatile-server/constants"
 	"git.wid.la/versatile/versatile-server/errs"
 	"git.wid.la/versatile/versatile-server/models"
 
@@ -75,7 +76,7 @@ func NewUsers(
 	}
 }
 
-// Signin swagger:route POST /signin Users UsersSignin
+// Signin swagger:route POST /users/signin Users UsersSignin
 //
 // Sign in
 //
@@ -83,10 +84,6 @@ func NewUsers(
 //
 // Responses:
 //  200: SessionResponse
-//  400: BodyDecodingResponse
-//  401: UnauthorizedResponse
-//  422: ValidationResponse
-//  500: InternalResponse
 func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	cred := &models.Credentials{}
 
@@ -134,11 +131,12 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 
 	session.Policies = nil
 	session.Payload = ""
+	session.OwnerToken = ""
 
 	c.JSON.Render(ctx, w, http.StatusCreated, session)
 }
 
-// CurrentSession swagger:route GET /me/session Users UsersCurrentSession
+// CurrentSession swagger:route GET /users/me/session Users UsersCurrentSession
 //
 // Current session
 //
@@ -146,13 +144,11 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //
 // Responses:
 //  200: SessionResponse
-//  401: UnauthorizedResponse
-//  500: InternalResponse
 func (c *Users) CurrentSession(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	c.JSON.Render(ctx, w, http.StatusOK, c.Context.CurrentSession)
 }
 
-// Signout swagger:route POST /me/signout Users UsersSignout
+// Signout swagger:route POST /users/me/signout Users UsersSignout
 //
 // Sign out
 //
@@ -160,8 +156,6 @@ func (c *Users) CurrentSession(ctx context.Context, w http.ResponseWriter, r *ht
 //
 // Responses:
 //  200: SessionResponse
-//  401: UnauthorizedResponse
-//  500: InternalResponse
 func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	session, err := c.SessionsInter.Delete(c.Context.AccessToken)
 	if err != nil {
@@ -171,11 +165,12 @@ func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	session.Policies = nil
 	session.Payload = ""
+	session.OwnerToken = ""
 
 	c.JSON.Render(ctx, w, http.StatusOK, session)
 }
 
-// Find swagger:route GET / Users UsersFind
+// Find swagger:route GET /users Users UsersFind
 //
 // Find
 //
@@ -183,10 +178,6 @@ func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Requ
 //
 // Responses:
 //  200: UsersResponse
-//  400: FilterDecodingResponse
-//  401: UnauthorizedResponse
-//  422: InvalidFilterResponse
-//  500: InternalResponse
 func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	users, err := c.Inter.Find(c.Context.CurrentUser.ID, c.Context.Filter)
 	if err != nil {
@@ -206,7 +197,7 @@ func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request
 	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
-// FindSelf swagger:route GET /me Users UsersFindSelf
+// FindSelf swagger:route GET /users/me Users UsersFindSelf
 //
 // Find self
 //
@@ -214,7 +205,6 @@ func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request
 //
 // Responses:
 //  200: UserResponse
-//  401: UnauthorizedResponse
 func (c *Users) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, c.Context.CurrentUser.ID, nil)
 	if err != nil {
@@ -232,7 +222,7 @@ func (c *Users) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Req
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
-// FindByKey swagger:route GET /{key} Users UsersFindByKey
+// FindByKey swagger:route GET /users/{key} Users UsersFindByKey
 //
 // Find by key
 //
@@ -240,10 +230,6 @@ func (c *Users) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Req
 //
 // Responses:
 //  200: UserResponse
-//  400: FilterDecodingResponse
-//  401: UnauthorizedResponse
-//  422: InvalidFilterResponse
-//  500: InternalResponse
 func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"], c.Context.Filter)
 	if err != nil {
@@ -263,7 +249,7 @@ func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Re
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
-// Create swagger:route POST / Users UsersCreate
+// Create swagger:route POST /users Users UsersCreate
 //
 // Create
 //
@@ -271,10 +257,6 @@ func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Re
 //
 // Responses:
 //  201: UserResponse
-//  400: BodyDecodingResponse
-//  401: UnauthorizedResponse
-//  422: ValidationResponse
-//  500: InternalResponse
 func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	var users []models.User
 
@@ -301,7 +283,7 @@ func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// Delete swagger:route DELETE / Users UsersDelete
+// Delete swagger:route DELETE /users Users UsersDelete
 //
 // Delete
 //
@@ -309,10 +291,6 @@ func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //
 // Responses:
 //  200: UsersResponse
-//  400: FilterDecodingResponse
-//  401: UnauthorizedResponse
-//  422: InvalidFilterResponse
-//  500: InternalResponse
 func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	users, err := c.Inter.Delete(c.Context.CurrentUser.ID, c.Context.Filter)
 	if err != nil {
@@ -328,7 +306,7 @@ func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
-// DeleteByKey swagger:route DELETE /{key} Users UsersDeleteByKey
+// DeleteByKey swagger:route DELETE /users/{key} Users UsersDeleteByKey
 //
 // Delete by key
 //
@@ -336,8 +314,6 @@ func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //
 // Responses:
 //  200: UserResponse
-//  401: UnauthorizedResponse
-//  500: InternalResponse
 func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user, err := c.Inter.DeleteByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"])
 	if err != nil {
@@ -353,7 +329,7 @@ func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
-// Update swagger:route PUT / Users UsersUpdate
+// Update swagger:route PUT /users Users UsersUpdate
 //
 // Update
 //
@@ -361,25 +337,21 @@ func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.
 //
 // Responses:
 //  200: UserResponse
-//  401: UnauthorizedResponse
-//  400: BodyDecodingResponse
-//  422: ValidationResponse
-//  400: FilterDecodingResponse
-//  422: InvalidFilterResponse
-//  500: InternalResponse
 func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user := &models.User{}
 
 	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, user); !ok {
 		return
 	}
-	// if err := c.Validator.UpdateOne(user); err != nil {
-	// 	c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
-	// 	return
-	// }
+
+	if err := c.Validator.Update(user); err != nil {
+		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
+		return
+	}
 
 	user.Key = ""
 	user.Password = ""
+	user.OwnerToken = ""
 
 	users, err := c.Inter.Update(c.Context.CurrentUser.ID, user, c.Context.Filter)
 	if err != nil {
@@ -395,7 +367,7 @@ func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
-// UpdateByKey swagger:route PUT /{key} Users UsersUpdateByKey
+// UpdateByKey swagger:route PUT /users/{key} Users UsersUpdateByKey
 //
 // Update by key
 //
@@ -403,10 +375,6 @@ func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Reque
 //
 // Responses:
 //  200: UserResponse
-//  401: UnauthorizedResponse
-//  400: BodyDecodingResponse
-//  422: ValidationResponse
-//  500: InternalResponse
 func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user := &models.User{}
 
@@ -414,13 +382,14 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	// if err := c.Validator.UpdateOne(user); err != nil {
-	// 	c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
-	// 	return
-	// }
+	if err := c.Validator.Update(user); err != nil {
+		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
+		return
+	}
 
 	user.Key = ""
 	user.Password = ""
+	user.OwnerToken = ""
 
 	user, err := c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.URLParams["key"], user)
 	if err != nil {
@@ -436,7 +405,7 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
-// UpdateSelfPassword swagger:route POST /me/password Users UsersUpdateSelfPassword
+// UpdateSelfPassword swagger:route POST /users/me/password Users UsersUpdateSelfPassword
 //
 // Update self password
 //
@@ -444,10 +413,6 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 //
 // Responses:
 //  200: UserResponse
-//  401: UnauthorizedResponse
-//  400: BodyDecodingResponse
-//  422: ValidationResponse
-//  500: InternalResponse
 func (c *Users) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	pwd := &models.Password{}
 
@@ -476,10 +441,10 @@ func (c *Users) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
-// swagger:parameters Users UsersSignout UsersFindSelf
-type tokenParam struct {
-	// Access token (can also be set via the 'Authorization' header. Ex: 'Authorization: Bearer jhPd6Gf3jIP2h')
-	//
-	// in: query
-	AccessToken string `json:"accessToken"`
-}
+// // swagger:parameters Users UsersSignout UsersFindSelf
+// type tokenParam struct {
+// 	// Access token (can also be set via the 'Authorization' header. Ex: 'Authorization: Bearer jhPd6Gf3jIP2h')
+// 	//
+// 	// in: query
+// 	AccessToken string `json:"accessToken"`
+// }

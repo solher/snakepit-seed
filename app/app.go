@@ -2,9 +2,7 @@ package app
 
 import (
 	"net/http"
-	"time"
 
-	"gopkg.in/h2non/gentleman-retry.v0"
 	"gopkg.in/h2non/gentleman.v0"
 
 	"git.wid.la/versatile/versatile-server/constants"
@@ -12,7 +10,6 @@ import (
 	"git.wid.la/versatile/versatile-server/middlewares"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/eapache/go-resiliency/retrier"
 	"github.com/pressly/chi"
 	"github.com/solher/arangolite"
 	"github.com/solher/snakepit"
@@ -30,9 +27,10 @@ func Builder(v *viper.Viper, l *logrus.Logger) http.Handler {
 		v.GetString(constants.DBUserPassword),
 	)
 	cli := gentleman.New()
-	cli.Use(retry.New(retrier.New(retrier.ExponentialBackoff(3, 100*time.Millisecond), nil)))
 
 	timer := snakepit.NewTimer("Middleware stack")
+
+	router.Use(snakepit.NewSwagger())
 	router.Use(snakepit.NewRequestID())
 	router.Use(snakepit.NewLogger(l))
 	router.Use(timer.Start)

@@ -8,6 +8,8 @@ import (
 )
 
 func init() {
+	root.Cmd.AddCommand(run.Cmd)
+
 	run.Builder = app.Builder
 
 	// APP

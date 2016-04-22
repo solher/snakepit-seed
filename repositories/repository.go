@@ -6,7 +6,7 @@ import (
 
 	"github.com/solher/snakepit-seed/errs"
 
-	"gopkg.in/h2non/gentleman.v0"
+	"gopkg.in/h2non/gentleman.v1"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/ansel1/merry"

@@ -1,25 +1,22 @@
-hash: a1a1bb5f3b0ec66b4ff93bb5d14c436c3f9538f6d17dc1c02e6fcf38b7506a36
-updated: 2016-04-22T12:32:20.596004948-07:00
+hash: e64b1349c5fb7f201a89509f49788f6e3a649e25ddf1ba3a143f3bf1addea85d
+updated: 2016-04-22T14:35:42.5086234-07:00
 imports:
 - name: github.com/ansel1/merry
   version: 5d27db058b2209512885615d6b5d96df9569d0c9
 - name: github.com/armon/consul-api
   version: dcfedd50ed5334f96adee43fc88518a4f095e15c
-  repo: https://github.com/armon/consul-api
 - name: github.com/BurntSushi/toml
   version: bbd5bb678321a0d6e58f1099321dfa73391c1b6f
 - name: github.com/codegangsta/negroni
   version: c7477ad8e330bef55bf1ebe300cf8aa67c492d1b
 - name: github.com/coreos/go-etcd
   version: 003851be7bb0694fe3cc457a49529a19388ee7cf
-  repo: https://github.com/coreos/go-etcd
 - name: github.com/cpuguy83/go-md2man
   version: 2724a9c9051aa62e9cca11304e7dd518e9e41599
 - name: github.com/eapache/go-resiliency
   version: b86b1ec0dd4209a588dc1285cdd471e73525c0b3
 - name: github.com/fsnotify/fsnotify
   version: 30411dbcefb7a1da7e84f75530ad3abe4011b4f8
-  repo: https://github.com/fsnotify/fsnotify
 - name: github.com/go-errors/errors
   version: a41850380601eeb43f4350f7d17c6bbd8944aaf8
 - name: github.com/hashicorp/hcl
@@ -28,7 +25,6 @@ imports:
   version: add1dbc86daf0f983cd4a48ceb39deb95c729b67
 - name: github.com/kr/pty
   version: f7ee69f31298ecbe5d2b349c711e2547a617d398
-  repo: https://github.com/kr/pty
 - name: github.com/kr/text
   version: bb797dc4fb8320488f47bf11de07a733d7233e1f
 - name: github.com/magiconair/properties
@@ -46,7 +42,7 @@ imports:
 - name: github.com/Sirupsen/logrus
   version: 081307d9bc1364753142d5962fc1d795c742baaf
 - name: github.com/solher/arangolite
-  version: 23c77effcbfaf48a2f7be5256a4a184f3d128a01
+  version: 9c1995a67d4ee546cbc3d2c3dcf23f5919b621b8
   subpackages:
   - filters
 - name: github.com/solher/snakepit
@@ -66,13 +62,10 @@ imports:
   version: f904a1790545169368e8d37badd19d1895d94f29
 - name: github.com/tylerb/graceful
   version: 9a3d4236b03bb5d26f7951134d248f9d5510d599
-  repo: https://github.com/tylerb/graceful
 - name: github.com/ugorji/go
   version: a396ed22fc049df733440d90efe17475e3929ccb
-  repo: https://github.com/ugorji/go
 - name: github.com/xordataexchange/crypt
   version: 749e360c8f236773f28fc6d3ddfce4a470795227
-  repo: https://github.com/xordataexchange/crypt
 - name: golang.org/x/crypto
   version: 7b428712abe956d0e9e1e9a01e163fb6c7171438
   subpackages:
@@ -85,22 +78,16 @@ imports:
   version: f64b50fbea64174967a8882830d621a18ee1548e
 - name: golang.org/x/text
   version: 3100578f0f8093e37883ba48c9187fe51367ad05
-  repo: https://golang.org/x/text
 - name: gopkg.in/airbrake/gobrake.v2
   version: 31c8ff1fb8b79a6947e6565e9a6df535f98a6b94
-  repo: https://gopkg.in/airbrake/gobrake.v2
 - name: gopkg.in/eapache/go-resiliency.v1
   version: 6800482f2c813e689c88b7ed3282262385011890
 - name: gopkg.in/gemnasium/logrus-airbrake-hook.v2
   version: 31e6fd4bd5a98d8ee7673d24bc54ec73c31810dd
-  repo: https://gopkg.in/gemnasium/logrus-airbrake-hook.v2
-- name: gopkg.in/h2non/gentleman-retry.v0
+- name: gopkg.in/h2non/gentleman-retry.v1
   version: 075a2da4557bd13331fb4bedce75d5951326f717
-- name: gopkg.in/h2non/gentleman.v0
-  version: d6267c58d55ae0f0b0e05ade80eef203740e3fd4
 - name: gopkg.in/h2non/gentleman.v1
   version: cdb163e01938b9ff2827396e2aecce37de3010d9
-  repo: https://gopkg.in/h2non/gentleman.v1
 - name: gopkg.in/tylerb/graceful.v1
   version: 9a3d4236b03bb5d26f7951134d248f9d5510d599
 - name: gopkg.in/yaml.v2

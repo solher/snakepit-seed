@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"gopkg.in/h2non/gentleman.v0"
+	"gopkg.in/h2non/gentleman.v1"
 
 	"github.com/pressly/chi"
 	"github.com/solher/arangolite/filters"

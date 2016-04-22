@@ -3,7 +3,7 @@ package app
 import (
 	"net/http"
 
-	"gopkg.in/h2non/gentleman.v0"
+	"gopkg.in/h2non/gentleman.v1"
 
 	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit-seed/handlers"

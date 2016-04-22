@@ -17,4 +17,4 @@ import:
 - package: golang.org/x/net
   subpackages:
   - /context
-- package: gopkg.in/h2non/gentleman.v0
+- package: gopkg.in/h2non/gentleman.v1

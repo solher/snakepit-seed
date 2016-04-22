@@ -1,5 +1,5 @@
 hash: a1a1bb5f3b0ec66b4ff93bb5d14c436c3f9538f6d17dc1c02e6fcf38b7506a36
-updated: 2016-04-18T17:22:31.853470868-07:00
+updated: 2016-04-22T12:32:20.596004948-07:00
 imports:
 - name: github.com/ansel1/merry
   version: 5d27db058b2209512885615d6b5d96df9569d0c9
@@ -17,6 +17,9 @@ imports:
   version: 2724a9c9051aa62e9cca11304e7dd518e9e41599
 - name: github.com/eapache/go-resiliency
   version: b86b1ec0dd4209a588dc1285cdd471e73525c0b3
+- name: github.com/fsnotify/fsnotify
+  version: 30411dbcefb7a1da7e84f75530ad3abe4011b4f8
+  repo: https://github.com/fsnotify/fsnotify
 - name: github.com/go-errors/errors
   version: a41850380601eeb43f4350f7d17c6bbd8944aaf8
 - name: github.com/hashicorp/hcl
@@ -37,7 +40,7 @@ imports:
 - name: github.com/pressly/chi
   version: 3031602cdf5cb22ee995ce9905966125f5c6865d
 - name: github.com/russross/blackfriday
-  version: b43df972fb5fdf3af8d2e90f38a69d374fe26dd0
+  version: 151efb040f183f3b968215a236c71a2614b62879
 - name: github.com/shurcooL/sanitized_anchor_name
   version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
 - name: github.com/Sirupsen/logrus
@@ -47,7 +50,7 @@ imports:
   subpackages:
   - filters
 - name: github.com/solher/snakepit
-  version: 1dff0917668d0b277e22840c67c10d39c85405af
+  version: 53bbf2362dacd67df9a6b762b59fb923ba5bde1a
   subpackages:
   - root
   - run
@@ -60,7 +63,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 8f6a28b0916586e7f22fe931ae2fcfc380b1c0e6
 - name: github.com/spf13/viper
-  version: c975dc1b4eacf4ec7fdbf0873638de5d090ba323
+  version: f904a1790545169368e8d37badd19d1895d94f29
 - name: github.com/tylerb/graceful
   version: 9a3d4236b03bb5d26f7951134d248f9d5510d599
   repo: https://github.com/tylerb/graceful
@@ -71,30 +74,33 @@ imports:
   version: 749e360c8f236773f28fc6d3ddfce4a470795227
   repo: https://github.com/xordataexchange/crypt
 - name: golang.org/x/crypto
-  version: 1777f3ba8c1fed80fcaec3317e3aaa4f627764d2
+  version: 7b428712abe956d0e9e1e9a01e163fb6c7171438
   subpackages:
   - /bcrypt
 - name: golang.org/x/net
-  version: fb93926129b8ec0056f2f458b1f519654814edf0
+  version: 815d315ead425c4365077d904a2331ee9e179820
   subpackages:
   - /context
+- name: golang.org/x/sys
+  version: f64b50fbea64174967a8882830d621a18ee1548e
 - name: golang.org/x/text
-  version: 02704b6b714738b763ba478766eb55a4b4851cd4
+  version: 3100578f0f8093e37883ba48c9187fe51367ad05
   repo: https://golang.org/x/text
 - name: gopkg.in/airbrake/gobrake.v2
   version: 31c8ff1fb8b79a6947e6565e9a6df535f98a6b94
   repo: https://gopkg.in/airbrake/gobrake.v2
 - name: gopkg.in/eapache/go-resiliency.v1
   version: 6800482f2c813e689c88b7ed3282262385011890
-- name: gopkg.in/fsnotify.v1
-  version: 836bfd95fecc0f1511dd66bdbf2b5b61ab8b00b6
 - name: gopkg.in/gemnasium/logrus-airbrake-hook.v2
   version: 31e6fd4bd5a98d8ee7673d24bc54ec73c31810dd
   repo: https://gopkg.in/gemnasium/logrus-airbrake-hook.v2
 - name: gopkg.in/h2non/gentleman-retry.v0
-  version: 706cbacbdd37008e4e3d646ea56690681a11e6a1
+  version: 075a2da4557bd13331fb4bedce75d5951326f717
 - name: gopkg.in/h2non/gentleman.v0
   version: d6267c58d55ae0f0b0e05ade80eef203740e3fd4
+- name: gopkg.in/h2non/gentleman.v1
+  version: cdb163e01938b9ff2827396e2aecce37de3010d9
+  repo: https://gopkg.in/h2non/gentleman.v1
 - name: gopkg.in/tylerb/graceful.v1
   version: 9a3d4236b03bb5d26f7951134d248f9d5510d599
 - name: gopkg.in/yaml.v2

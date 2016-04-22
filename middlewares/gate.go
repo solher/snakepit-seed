@@ -75,18 +75,8 @@ func NewAuthenticatedOnly(j *snakepit.JSON) func(next chi.Handler) chi.Handler {
 	gate := &Gate{
 		json: j,
 		granter: func(role Role) bool {
-			return len(role) != 0 //&& role != Guest
+			return len(role) != 0
 		},
 	}
 	return gate.middleware
 }
-
-// func NewPublic(j *snakepit.JSON) func(next chi.Handler) chi.Handler {
-// 	gate := &Gate{
-// 		json: j,
-// 		granter: func(role Role) bool {
-// 			return len(role) != 0
-// 		},
-// 	}
-// 	return gate.middleware
-// }

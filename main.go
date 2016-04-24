@@ -4,8 +4,8 @@
 //
 // A simple Snakepit seed.
 //
-// Schemes: https
-// BasePath: /
+// Schemes: http
+// BasePath: /server
 // Version: 0.0.0
 //
 // Consumes:

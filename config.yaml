@@ -1,0 +1,19 @@
+---
+db:
+    url: "http://localhost:8000" # Overriden by Docker links env in production
+    name: "snakepit"
+    root:
+        name: "root"
+        password: "qwertyuiop"
+    user:
+        name: "snakepit"
+        password: "qwertyuiop"
+        
+app:
+    port: 3000
+    timeout: 5s
+    policyName: "snakepit"
+        
+services:
+    authServer:
+        url: "http://localhost:3001" # Overriden by Docker links env in production

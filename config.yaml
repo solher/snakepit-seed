@@ -1,6 +1,6 @@
 ---
 db:
-    url: "http://localhost:8000" # Overriden by Docker links env in production
+    url: "http://arangodb:8529"
     name: "snakepit"
     root:
         name: "root"
@@ -16,4 +16,4 @@ app:
         
 services:
     authServer:
-        url: "http://localhost:3001" # Overriden by Docker links env in production
+        url: "http://auth-server:3000"

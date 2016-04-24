@@ -1,5 +1,5 @@
 FROM gliderlabs/alpine
-RUN useradd -m app
+RUN adduser -D app
 USER app
 COPY snakepit-seed /usr/bin
 COPY swagger.json /home/app/

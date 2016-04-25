@@ -4,9 +4,9 @@ import "time"
 
 type Session struct {
 	// The creation timestamp.
-	Created time.Time `json:"created,omitempty"`
+	Created *time.Time `json:"created,omitempty"`
 	// The validity time limit of the session.
-	ValidTo time.Time `json:"validTo,omitempty"`
+	ValidTo *time.Time `json:"validTo,omitempty"`
 	// The authentication token identifying the session.
 	Token string `json:"token,omitempty"`
 	// An optional token to find a user's sessions.

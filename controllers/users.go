@@ -123,8 +123,6 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		Payload:    string(m),
 	}
 
-	c.Logger.Debug(*session)
-
 	session, err = c.SessionsInter.Create(session)
 	if err != nil {
 		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)

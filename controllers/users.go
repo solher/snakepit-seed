@@ -49,6 +49,7 @@ type (
 		Signin(cred *models.Credentials) error
 		Create(users []models.User) error
 		Update(user *models.User) error
+		UpdateSelfPassword(pwd *models.Password) error
 	}
 
 	Users struct {
@@ -124,9 +125,6 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		Policies:   []string{c.Constants.GetString(constants.PolicyName)},
 		Payload:    string(m),
 	}
-
-	s, _ := json.Marshal(session)
-	c.Logger.Debug(string(s))
 
 	session, err = c.SessionsInter.Create(session)
 	if err != nil {
@@ -425,8 +423,8 @@ func (c *Users) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	if len(pwd.Password) == 0 {
-		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, merry.New("password cannot be blank"))
+	if err := c.Validator.UpdateSelfPassword(pwd); err != nil {
+		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 

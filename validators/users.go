@@ -30,7 +30,7 @@ func (v *Users) Create(users []models.User) error {
 			return snakepit.NewValidationError(errs.FieldRole, errs.ValidBlank)
 		}
 
-		if err := v.RoleExistence(middlewares.Role(user.Role)); err != nil {
+		if err := v.roleExistence(middlewares.Role(user.Role)); err != nil {
 			return err
 		}
 	}
@@ -51,14 +51,22 @@ func (v *Users) Signin(cred *models.Credentials) error {
 }
 
 func (v *Users) Update(user *models.User) error {
-	if err := v.RoleExistence(middlewares.Role(user.Role)); err != nil {
+	if err := v.roleExistence(middlewares.Role(user.Role)); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (v *Users) RoleExistence(role middlewares.Role) error {
+func (v *Users) UpdateSelfPassword(pwd *models.Password) error {
+	if len(pwd.Password) == 0 {
+		return snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank)
+	}
+
+	return nil
+}
+
+func (v *Users) roleExistence(role middlewares.Role) error {
 	switch role {
 	case middlewares.Admin,
 		middlewares.Developer,

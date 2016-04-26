@@ -2,23 +2,23 @@ package models
 
 type User struct {
 	// The document handle. Format: ':collection/:key'
-	ID string `json:"_id"`
+	ID string `json:"_id,omitempty"`
 	// The document's revision token. Changes at each update.
-	Rev string `json:"_rev"`
+	Rev string `json:"_rev,omitempty"`
 	// The document's unique key.
-	Key string `json:"_key"`
+	Key string `json:"_key,omitempty"`
 	// The user first name.
-	FirstName string `json:"firstName"`
+	FirstName string `json:"firstName,omitempty"`
 	// The user last name.
-	LastName string `json:"lastName"`
+	LastName string `json:"lastName,omitempty"`
 	// The user email.
-	Email string `json:"email"`
+	Email string `json:"email,omitempty"`
 	// A unique identifier across the auth system.
 	OwnerToken string `json:"ownerToken,omitempty"`
 	// The user password.
 	Password string `json:"password,omitempty"`
 	// The role name of the user.
-	Role string `json:"role"`
+	Role string `json:"role,omitempty"`
 }
 
 // swagger:response UsersResponse
@@ -50,7 +50,7 @@ type usersFilterParam struct {
 	Filter string
 }
 
-// swagger:parameters UsersCreate UsersUpdate UsersUpdateByEmail
+// swagger:parameters UsersCreate UsersUpdate UsersUpdateByKey UsersUpdateByEmail
 type usersBodyParam struct {
 	// required: true
 	// in: body

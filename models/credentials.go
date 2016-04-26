@@ -2,9 +2,9 @@ package models
 
 type Credentials struct {
 	// The user email.
-	Email string `json:"email"`
+	Email string `json:"email,omitempty"`
 	// The user password.
-	Password string `json:"password"`
+	Password string `json:"password,omitempty"`
 }
 
 // swagger:parameters UsersSignin
@@ -16,7 +16,7 @@ type credentialsBodyParam struct {
 
 type Password struct {
 	// The user password.
-	Password string `json:"password"`
+	Password string `json:"password,omitempty"`
 }
 
 // swagger:parameters UsersUpdateSelfPassword

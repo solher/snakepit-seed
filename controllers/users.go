@@ -34,7 +34,7 @@ type (
 		Delete(userID string, f *filters.Filter) ([]models.User, error)
 		DeleteByKey(userID, id string) (*models.User, error)
 		Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error)
-		UpdateByKey(userID, id string, user *models.User) (*models.User, error)
+		ReplaceByKey(userID, id string, user *models.User) (*models.User, error)
 		UpdatePassword(userID, id, password string) (*models.User, error)
 	}
 
@@ -394,7 +394,7 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 	user.Password = ""
 	user.OwnerToken = ""
 
-	user, err := c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, user)
+	user, err := c.Inter.ReplaceByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, user)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):
@@ -443,11 +443,3 @@ func (c *Users) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r
 
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
-
-// // swagger:parameters Users UsersSignout UsersFindSelf
-// type tokenParam struct {
-// 	// Access token (can also be set via the 'Authorization' header. Ex: 'Authorization: Bearer jhPd6Gf3jIP2h')
-// 	//
-// 	// in: query
-// 	AccessToken string `json:"accessToken"`
-// }

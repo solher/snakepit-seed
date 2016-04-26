@@ -9,12 +9,12 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/solher/snakepit-seed/models"
 	"github.com/Sirupsen/logrus"
 	"github.com/ansel1/merry"
 	"github.com/solher/arangolite"
 	"github.com/solher/arangolite/filters"
 	"github.com/solher/snakepit"
+	"github.com/solher/snakepit-seed/models"
 	"github.com/spf13/viper"
 )
 
@@ -204,12 +204,18 @@ func (i *Users) Update(userID string, user *models.User, f *filters.Filter) ([]m
 	return users, nil
 }
 
-func (i *Users) UpdateByKey(userID, id string, user *models.User) (*models.User, error) {
-	f := &filters.Filter{}
-	f.Where = append(f.Where, map[string]interface{}{"_id": id})
+func (i *Users) ReplaceByKey(userID, id string, user *models.User) (*models.User, error) {
+	q := arangolite.NewQuery(`
+		FOR u IN users
+        FILTER u._id == @userID
+        FILTER u._id == id
+		REPLACE u with @user IN users
+		RETURN NEW
+	`).Bind("user", user).Bind("userID", userID)
 
-	users, err := i.Update(userID, user, f)
-	if err != nil {
+	users := []models.User{}
+
+	if err := i.Repo.Run(q, &users); err != nil {
 		return nil, merry.Here(err)
 	}
 
@@ -230,10 +236,17 @@ func (i *Users) UpdatePassword(userID, id, password string) (*models.User, error
 		Password: string(enc),
 	}
 
-	user, err = i.UpdateByKey(userID, id, user)
+	f := &filters.Filter{}
+	f.Where = append(f.Where, map[string]interface{}{"_id": id})
+
+	users, err := i.Update(userID, user, f)
 	if err != nil {
 		return nil, merry.Here(err)
 	}
 
-	return user, nil
+	if len(users) != 1 {
+		return nil, merry.New("there should ")
+	}
+
+	return &users[0], nil
 }

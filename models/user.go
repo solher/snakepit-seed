@@ -33,7 +33,7 @@ type userResponse struct {
 	Body User
 }
 
-// swagger:parameters UsersFindByKey UsersDeleteByKey UsersUpdateByKey
+// swagger:parameters UsersFindByKey UsersDeleteByKey UsersReplaceByKey
 type usersKeyParam struct {
 	// User key
 	//
@@ -50,7 +50,7 @@ type usersFilterParam struct {
 	Filter string
 }
 
-// swagger:parameters UsersCreate UsersUpdate UsersUpdateByKey UsersUpdateByEmail
+// swagger:parameters UsersCreate UsersUpdate UsersReplaceByKey UsersUpdateByEmail
 type usersBodyParam struct {
 	// required: true
 	// in: body

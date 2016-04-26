@@ -1,8 +1,10 @@
 package interactors
 
 import (
+	"encoding/json"
 	"sync"
 
+	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit-seed/utils"
 
 	"github.com/solher/snakepit-seed/errs"
@@ -19,14 +21,16 @@ import (
 )
 
 type (
-	SessionsCascadeDeleter interface {
+	SessionsReaderWriter interface {
+		Create(session *models.Session) (*models.Session, error)
+		Delete(token string) (*models.Session, error)
 		DeleteCascade(wg *sync.WaitGroup, users []models.User)
 	}
 
 	Users struct {
 		snakepit.Interactor
 		Repo          QueryRunner
-		SessionsInter SessionsCascadeDeleter
+		SessionsInter SessionsReaderWriter
 	}
 )
 
@@ -34,7 +38,7 @@ func NewUsers(
 	c *viper.Viper,
 	l *logrus.Entry,
 	r QueryRunner,
-	si SessionsCascadeDeleter,
+	si SessionsReaderWriter,
 ) *Users {
 	return &Users{
 		Interactor:    *snakepit.NewInteractor(c, l),
@@ -63,6 +67,45 @@ func (i *Users) Find(userID string, f *filters.Filter) ([]models.User, error) {
 	}
 
 	return users, nil
+}
+
+func (i *Users) Signin(cred *models.Credentials, agent string) (*models.Session, error) {
+	user, err := i.FindByCred(cred)
+	if err != nil {
+		return nil, err
+	}
+
+	user.Password = ""
+
+	payload := &models.AuthServerPayload{
+		User: user,
+		Role: user.Role,
+	}
+
+	m, _ := json.Marshal(payload)
+
+	session := &models.Session{
+		OwnerToken: user.OwnerToken,
+		Agent:      agent,
+		Policies:   []string{i.Constants.GetString(constants.PolicyName)},
+		Payload:    string(m),
+	}
+
+	session, err = i.SessionsInter.Create(session)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
+}
+
+func (i *Users) Signout(accessToken string) (*models.Session, error) {
+	session, err := i.SessionsInter.Delete(accessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return session, nil
 }
 
 func (i *Users) FindByCred(cred *models.Credentials) (*models.User, error) {

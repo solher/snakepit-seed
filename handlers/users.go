@@ -144,7 +144,6 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		h.JSON,
 		context,
 		inter,
-		sessionsInter,
 		validator,
 	)
 

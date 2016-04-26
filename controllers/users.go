@@ -1,12 +1,10 @@
 package controllers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"golang.org/x/net/context"
 
-	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit-seed/errs"
 	"github.com/solher/snakepit-seed/models"
 
@@ -36,13 +34,9 @@ type (
 		ReplaceByKey(userID, id string, user *models.User) (*models.User, error)
 		DeleteByKey(userID, id string) (*models.User, error)
 
-		FindByCred(cred *models.Credentials) (*models.User, error)
+		Signin(cred *models.Credentials, agent string) (*models.Session, error)
+		Signout(accessToken string) (*models.Session, error)
 		UpdatePassword(userID, id, password string) (*models.User, error)
-	}
-
-	SessionsReaderWriter interface {
-		Create(session *models.Session) (*models.Session, error)
-		Delete(token string) (*models.Session, error)
 	}
 
 	UsersValidator interface {
@@ -54,10 +48,9 @@ type (
 
 	Users struct {
 		snakepit.Controller
-		Context       UsersContext
-		Inter         UsersInter
-		SessionsInter SessionsReaderWriter
-		Validator     UsersValidator
+		Context   UsersContext
+		Inter     UsersInter
+		Validator UsersValidator
 	}
 )
 
@@ -67,15 +60,13 @@ func NewUsers(
 	j *snakepit.JSON,
 	ctx UsersContext,
 	i UsersInter,
-	si SessionsReaderWriter,
 	v UsersValidator,
 ) *Users {
 	return &Users{
-		Controller:    *snakepit.NewController(c, l, j),
-		Context:       ctx,
-		Inter:         i,
-		SessionsInter: si,
-		Validator:     v,
+		Controller: *snakepit.NewController(c, l, j),
+		Context:    ctx,
+		Inter:      i,
+		Validator:  v,
 	}
 }
 
@@ -99,7 +90,7 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	user, err := c.Inter.FindByCred(cred)
+	session, err := c.Inter.Signin(cred, r.UserAgent())
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):
@@ -107,28 +98,6 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		default:
 			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		}
-		return
-	}
-
-	user.Password = ""
-
-	payload := &models.AuthServerPayload{
-		User: user,
-		Role: user.Role,
-	}
-
-	m, _ := json.Marshal(payload)
-
-	session := &models.Session{
-		OwnerToken: user.OwnerToken,
-		Agent:      r.UserAgent(),
-		Policies:   []string{c.Constants.GetString(constants.PolicyName)},
-		Payload:    string(m),
-	}
-
-	session, err = c.SessionsInter.Create(session)
-	if err != nil {
-		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
 	}
 
@@ -160,7 +129,7 @@ func (c *Users) CurrentSession(ctx context.Context, w http.ResponseWriter, r *ht
 // Responses:
 //  200: SessionResponse
 func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	session, err := c.SessionsInter.Delete(c.Context.AccessToken)
+	session, err := c.Inter.Signout(c.Context.AccessToken)
 	if err != nil {
 		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return

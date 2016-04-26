@@ -140,8 +140,16 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		sessionsInter,
 	)
 
-	valid := validators.NewUsers(logger)
 	sessionsValid := validators.NewSessions(logger)
+	var valid controllers.UsersValidator
+	switch middlewares.Role(currentSession.Role) {
+	case middlewares.Admin:
+		valid = validators.NewUsersAdmin(logger)
+	case middlewares.User:
+		valid = validators.NewUsersUser(logger)
+	default:
+		valid = validators.NewUsersUser(logger)
+	}
 
 	ctrl := controllers.NewUsers(
 		h.Constants,

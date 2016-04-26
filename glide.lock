@@ -1,12 +1,12 @@
 hash: e64b1349c5fb7f201a89509f49788f6e3a649e25ddf1ba3a143f3bf1addea85d
-updated: 2016-04-24T12:23:24.676693131-07:00
+updated: 2016-04-26T15:37:17.441899507-07:00
 imports:
 - name: github.com/ansel1/merry
   version: 5d27db058b2209512885615d6b5d96df9569d0c9
 - name: github.com/armon/consul-api
   version: dcfedd50ed5334f96adee43fc88518a4f095e15c
 - name: github.com/BurntSushi/toml
-  version: bbd5bb678321a0d6e58f1099321dfa73391c1b6f
+  version: f0aeabca5a127c4078abb8c8d64298b147264b55
 - name: github.com/codegangsta/negroni
   version: c7477ad8e330bef55bf1ebe300cf8aa67c492d1b
 - name: github.com/coreos/go-etcd
@@ -20,7 +20,7 @@ imports:
 - name: github.com/go-errors/errors
   version: a41850380601eeb43f4350f7d17c6bbd8944aaf8
 - name: github.com/hashicorp/hcl
-  version: 27a57f2605e04995c111273c263d51cee60d9bc4
+  version: 9a905a34e6280ce905da1a32344b25e81011197a
 - name: github.com/kr/pretty
   version: add1dbc86daf0f983cd4a48ceb39deb95c729b67
 - name: github.com/kr/pty
@@ -32,7 +32,7 @@ imports:
 - name: github.com/mitchellh/mapstructure
   version: d2dd0262208475919e1a362f675cfc0e7c10e905
 - name: github.com/pquerna/ffjson
-  version: 7327d038fae6927740461371efe7f330c23c3e5f
+  version: 0ffb2b0305b5927b936a35dc3a440fdfede62420
 - name: github.com/pressly/chi
   version: 3031602cdf5cb22ee995ce9905966125f5c6865d
 - name: github.com/russross/blackfriday
@@ -40,13 +40,13 @@ imports:
 - name: github.com/shurcooL/sanitized_anchor_name
   version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
 - name: github.com/Sirupsen/logrus
-  version: 081307d9bc1364753142d5962fc1d795c742baaf
+  version: cd7d1bbe41066b6c1f19780f895901052150a575
 - name: github.com/solher/arangolite
   version: 9c1995a67d4ee546cbc3d2c3dcf23f5919b621b8
   subpackages:
   - filters
 - name: github.com/solher/snakepit
-  version: f500fbd6d099b398b9dde3f671fd228a34c72d65
+  version: d1a91a1bb142bf892d4d895714eebf7bd104f014
   subpackages:
   - root
   - run
@@ -67,7 +67,7 @@ imports:
 - name: github.com/xordataexchange/crypt
   version: 749e360c8f236773f28fc6d3ddfce4a470795227
 - name: golang.org/x/crypto
-  version: 7b428712abe956d0e9e1e9a01e163fb6c7171438
+  version: 285fb2ed20d1dc450fc743a1b3ff7c36bef372b9
   subpackages:
   - /bcrypt
 - name: golang.org/x/net

@@ -40,10 +40,10 @@ type (
 	}
 
 	UsersValidator interface {
-		Signin(cred *models.Credentials) error
-		Create(users []models.User) error
-		Update(user *models.User) error
-		UpdatePassword(pwd *models.Password) error
+		Signin(cred *models.Credentials) (*models.Credentials, error)
+		Create(users []models.User) ([]models.User, error)
+		Update(user *models.User) (*models.User, error)
+		UpdatePassword(pwd *models.Password) (*models.Password, error)
 		Output(users []models.User) []models.User
 	}
 
@@ -93,7 +93,8 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := c.Validator.Signin(cred); err != nil {
+	cred, err := c.Validator.Signin(cred)
+	if err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
@@ -216,12 +217,13 @@ func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := c.Validator.Create(users); err != nil {
+	users, err := c.Validator.Create(users)
+	if err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 
-	users, err := c.Inter.Create(c.Context.CurrentUser.ID, users)
+	users, err = c.Inter.Create(c.Context.CurrentUser.ID, users)
 	if err != nil {
 		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
@@ -301,7 +303,8 @@ func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := c.Validator.Update(user); err != nil {
+	user, err := c.Validator.Update(user)
+	if err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
@@ -337,12 +340,13 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	if err := c.Validator.Update(user); err != nil {
+	user, err := c.Validator.Update(user)
+	if err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 
-	user, err := c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, user)
+	user, err = c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, user)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):
@@ -373,7 +377,8 @@ func (c *Users) UpdatePassword(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	if err := c.Validator.UpdatePassword(pwd); err != nil {
+	pwd, err := c.Validator.UpdatePassword(pwd)
+	if err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}

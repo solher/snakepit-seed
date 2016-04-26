@@ -1,6 +1,10 @@
 package validators
 
 import (
+	"time"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/ansel1/merry"
 	"github.com/solher/snakepit"
 
 	"github.com/solher/snakepit-seed/errs"
@@ -9,65 +13,81 @@ import (
 )
 
 type (
-	Users struct{}
+	Users struct {
+		snakepit.Validator
+	}
 )
 
-func NewUsers() *Users {
-	return &Users{}
+func NewUsers(l *logrus.Entry) *Users {
+	return &Users{
+		Validator: *snakepit.NewValidator(l),
+	}
 }
 
-func (v *Users) Create(users []models.User) error {
+func (v *Users) Create(users []models.User) ([]models.User, error) {
+	start := time.Now()
+	defer v.LogTime(start)
+
 	for _, user := range users {
 		if len(user.Email) == 0 {
-			return snakepit.NewValidationError(errs.FieldEmail, errs.ValidBlank)
+			return nil, merry.Here(snakepit.NewValidationError(errs.FieldEmail, errs.ValidBlank))
 		}
 
 		if len(user.Password) == 0 {
-			return snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank)
+			return nil, merry.Here(snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank))
 		}
 
 		if len(user.Role) == 0 {
-			return snakepit.NewValidationError(errs.FieldRole, errs.ValidBlank)
+			return nil, merry.Here(snakepit.NewValidationError(errs.FieldRole, errs.ValidBlank))
 		}
 
 		if err := v.roleExistence(middlewares.Role(user.Role)); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return users, nil
 }
 
-func (v *Users) Signin(cred *models.Credentials) error {
+func (v *Users) Signin(cred *models.Credentials) (*models.Credentials, error) {
+	start := time.Now()
+	defer v.LogTime(start)
+
 	if len(cred.Email) == 0 {
-		return snakepit.NewValidationError(errs.FieldEmail, errs.ValidBlank)
+		return nil, merry.Here(snakepit.NewValidationError(errs.FieldEmail, errs.ValidBlank))
 	}
 
 	if len(cred.Password) == 0 {
-		return snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank)
+		return nil, merry.Here(snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank))
 	}
 
-	return nil
+	return cred, nil
 }
 
-func (v *Users) Update(user *models.User) error {
+func (v *Users) Update(user *models.User) (*models.User, error) {
+	start := time.Now()
+	defer v.LogTime(start)
+
 	if err := v.roleExistence(middlewares.Role(user.Role)); err != nil {
-		return err
+		return nil, err
 	}
 
 	user.Key = ""
 	user.Password = ""
 	user.OwnerToken = ""
 
-	return nil
+	return user, nil
 }
 
-func (v *Users) UpdatePassword(pwd *models.Password) error {
+func (v *Users) UpdatePassword(pwd *models.Password) (*models.Password, error) {
+	start := time.Now()
+	defer v.LogTime(start)
+
 	if len(pwd.Password) == 0 {
-		return snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank)
+		return nil, merry.Here(snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank))
 	}
 
-	return nil
+	return pwd, nil
 }
 
 func (v *Users) Output(users []models.User) []models.User {
@@ -86,7 +106,7 @@ func (v *Users) roleExistence(role middlewares.Role) error {
 		return nil
 	}
 
-	return snakepit.NewValidationError(errs.FieldRole, errs.ValidInvalid)
+	return merry.Here(snakepit.NewValidationError(errs.FieldRole, errs.ValidInvalid))
 }
 
 // func (v *Users) ValidateEmailUniqueness(user *models.User) error {

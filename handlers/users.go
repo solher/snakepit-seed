@@ -140,8 +140,8 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		sessionsInter,
 	)
 
-	valid := validators.NewUsers()
-	sessionsValid := validators.NewSessions()
+	valid := validators.NewUsers(logger)
+	sessionsValid := validators.NewSessions(logger)
 
 	ctrl := controllers.NewUsers(
 		h.Constants,

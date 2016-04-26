@@ -16,7 +16,7 @@ func NewUsers() *Users {
 	return &Users{}
 }
 
-func (v *Users) Creation(users []models.User) error {
+func (v *Users) Create(users []models.User) error {
 	for _, user := range users {
 		if len(user.Email) == 0 {
 			return snakepit.NewValidationError(errs.FieldEmail, errs.ValidBlank)
@@ -51,18 +51,6 @@ func (v *Users) Signin(cred *models.Credentials) error {
 }
 
 func (v *Users) Update(user *models.User) error {
-	if len(user.Email) == 0 {
-		return snakepit.NewValidationError(errs.FieldEmail, errs.ValidBlank)
-	}
-
-	if len(user.Password) == 0 {
-		return snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank)
-	}
-
-	if len(user.Role) == 0 {
-		return snakepit.NewValidationError(errs.FieldRole, errs.ValidBlank)
-	}
-
 	if err := v.RoleExistence(middlewares.Role(user.Role)); err != nil {
 		return err
 	}

@@ -27,14 +27,16 @@ type (
 	}
 
 	UsersInter interface {
-		Find(userID string, f *filters.Filter) ([]models.User, error)
-		FindByCred(cred *models.Credentials) (*models.User, error)
-		FindByKey(userID, id string, f *filters.Filter) (*models.User, error)
 		Create(userID string, users []models.User) ([]models.User, error)
-		Delete(userID string, f *filters.Filter) ([]models.User, error)
-		DeleteByKey(userID, id string) (*models.User, error)
+		Find(userID string, f *filters.Filter) ([]models.User, error)
 		Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error)
+		Delete(userID string, f *filters.Filter) ([]models.User, error)
+
+		FindByKey(userID, id string, f *filters.Filter) (*models.User, error)
 		ReplaceByKey(userID, id string, user *models.User) (*models.User, error)
+		DeleteByKey(userID, id string) (*models.User, error)
+
+		FindByCred(cred *models.Credentials) (*models.User, error)
 		UpdatePassword(userID, id, password string) (*models.User, error)
 	}
 
@@ -45,7 +47,7 @@ type (
 
 	UsersValidator interface {
 		Signin(cred *models.Credentials) error
-		Creation(users []models.User) error
+		Create(users []models.User) error
 		Update(user *models.User) error
 	}
 
@@ -268,7 +270,7 @@ func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := c.Validator.Creation(users); err != nil {
+	if err := c.Validator.Create(users); err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
@@ -370,22 +372,22 @@ func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Reque
 	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
-// UpdateByKey swagger:route PUT /users/{key} Users UsersUpdateByKey
+// ReplaceByKey swagger:route PUT /users/{key} Users UsersReplaceByKey
 //
-// Update by key
+// Replace by key
 //
-// Updates a user by key in the data source.
+// Replaces a user by key in the data source.
 //
 // Responses:
 //  200: UserResponse
-func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (c *Users) ReplaceByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user := &models.User{}
 
 	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, user); !ok {
 		return
 	}
 
-	if err := c.Validator.Update(user); err != nil {
+	if err := c.Validator.Create([]models.User{*user}); err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}

@@ -26,7 +26,7 @@ type (
 		Delete(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 		FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
-		UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
+		ReplaceByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 		Signin(ctx context.Context, w http.ResponseWriter, r *http.Request)
@@ -75,7 +75,7 @@ func (h *Users) routes(
 		// CRUD by key operations
 		r.Route("/:key", func(r chi.Router) {
 			r.Get("/", c.FindByKey)
-			r.Put("/", c.UpdateByKey)
+			r.Put("/", c.ReplaceByKey)
 			r.Delete("/", c.DeleteByKey)
 		})
 	})

@@ -3,14 +3,15 @@ package utils
 import (
 	"crypto/rand"
 
-	"github.com/solher/snakepit-seed/errs"
+	"github.com/ansel1/merry"
 	"github.com/solher/arangolite/filters"
+	"github.com/solher/snakepit-seed/errs"
 )
 
 func FilterToAQL(tmpVar string, f *filters.Filter) (string, error) {
 	filter, err := filters.ToAQL(tmpVar, f)
 	if err != nil {
-		return "", errs.InvalidFilter
+		return "", merry.Here(errs.InvalidFilter)
 	}
 
 	return filter, nil

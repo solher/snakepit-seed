@@ -50,7 +50,7 @@ func NewUsers(
 func (i *Users) Find(userID string, f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	q := arangolite.NewQuery(`
@@ -63,7 +63,7 @@ func (i *Users) Find(userID string, f *filters.Filter) ([]models.User, error) {
 	users := []models.User{}
 
 	if err := i.Repo.Run(q, &users); err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	return users, nil
@@ -118,7 +118,7 @@ func (i *Users) FindByCred(cred *models.Credentials) (*models.User, error) {
 	users := []models.User{}
 
 	if err := i.Repo.Run(q, &users); err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	if len(users) == 0 {
@@ -143,7 +143,7 @@ func (i *Users) FindByKey(userID, id string, f *filters.Filter) (*models.User, e
 
 	users, err := i.Find(userID, f)
 	if err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	if len(users) == 0 {
@@ -172,7 +172,7 @@ func (i *Users) Create(userID string, users []models.User) ([]models.User, error
 	users = []models.User{}
 
 	if err := i.Repo.Run(q, &users); err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	return users, nil
@@ -181,7 +181,7 @@ func (i *Users) Create(userID string, users []models.User) ([]models.User, error
 func (i *Users) Delete(userID string, f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	q := arangolite.NewQuery(`
@@ -195,7 +195,7 @@ func (i *Users) Delete(userID string, f *filters.Filter) ([]models.User, error) 
 	users := []models.User{}
 
 	if err := i.Repo.Run(q, &users); err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	wg := &sync.WaitGroup{}
@@ -214,7 +214,7 @@ func (i *Users) DeleteByKey(userID, id string) (*models.User, error) {
 
 	users, err := i.Delete(userID, f)
 	if err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	if len(users) == 0 {
@@ -227,7 +227,7 @@ func (i *Users) DeleteByKey(userID, id string) (*models.User, error) {
 func (i *Users) Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	q := arangolite.NewQuery(`
@@ -241,25 +241,19 @@ func (i *Users) Update(userID string, user *models.User, f *filters.Filter) ([]m
 	users := []models.User{}
 
 	if err := i.Repo.Run(q, &users); err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	return users, nil
 }
 
-func (i *Users) ReplaceByKey(userID, id string, user *models.User) (*models.User, error) {
-	q := arangolite.NewQuery(`
-		FOR u IN users
-        FILTER u._id == @userID
-        FILTER u._id == id
-		REPLACE u with @user IN users
-		RETURN NEW
-	`).Bind("user", user).Bind("userID", userID)
+func (i *Users) UpdateByKey(userID, id string, user *models.User) (*models.User, error) {
+	f := &filters.Filter{}
+	f.Where = append(f.Where, map[string]interface{}{"_id": id})
 
-	users := []models.User{}
-
-	if err := i.Repo.Run(q, &users); err != nil {
-		return nil, merry.Here(err)
+	users, err := i.Update(userID, user, f)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(users) == 0 {
@@ -279,17 +273,10 @@ func (i *Users) UpdatePassword(userID, id, password string) (*models.User, error
 		Password: string(enc),
 	}
 
-	f := &filters.Filter{}
-	f.Where = append(f.Where, map[string]interface{}{"_id": id})
-
-	users, err := i.Update(userID, user, f)
+	user, err = i.UpdateByKey(userID, id, user)
 	if err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
-	if len(users) != 1 {
-		return nil, merry.New("there should ")
-	}
-
-	return &users[0], nil
+	return user, nil
 }

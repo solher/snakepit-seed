@@ -19,7 +19,7 @@ type Password struct {
 	Password string `json:"password,omitempty"`
 }
 
-// swagger:parameters UsersUpdateSelfPassword
+// swagger:parameters UsersUpdatePassword
 type passwordBodyParam struct {
 	// required: true
 	// in: body

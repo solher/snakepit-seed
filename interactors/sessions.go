@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/ansel1/merry"
 	"github.com/solher/snakepit"
 	"github.com/spf13/viper"
 
@@ -39,7 +38,7 @@ func (i *Sessions) Create(session *models.Session) (*models.Session, error) {
 		session,
 		session,
 	); err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	return session, nil
@@ -55,7 +54,7 @@ func (i *Sessions) Delete(token string) (*models.Session, error) {
 		nil,
 		session,
 	); err != nil {
-		return nil, merry.Here(err)
+		return nil, err
 	}
 
 	return session, nil

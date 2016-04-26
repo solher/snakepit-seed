@@ -55,15 +55,27 @@ func (v *Users) Update(user *models.User) error {
 		return err
 	}
 
+	user.Key = ""
+	user.Password = ""
+	user.OwnerToken = ""
+
 	return nil
 }
 
-func (v *Users) UpdateSelfPassword(pwd *models.Password) error {
+func (v *Users) UpdatePassword(pwd *models.Password) error {
 	if len(pwd.Password) == 0 {
 		return snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank)
 	}
 
 	return nil
+}
+
+func (v *Users) Output(users []models.User) []models.User {
+	for i := range users {
+		users[i].Password = ""
+	}
+
+	return users
 }
 
 func (v *Users) roleExistence(role middlewares.Role) error {

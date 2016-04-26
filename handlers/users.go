@@ -26,14 +26,13 @@ type (
 		Delete(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 		FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
-		ReplaceByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
+		UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
 		Signin(ctx context.Context, w http.ResponseWriter, r *http.Request)
-		FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		CurrentSession(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		Signout(ctx context.Context, w http.ResponseWriter, r *http.Request)
-		UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r *http.Request)
+		UpdatePassword(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	}
 
 	Users struct {
@@ -59,6 +58,7 @@ func NewUsers(
 
 func (h *Users) routes(
 	j *snakepit.JSON,
+	ctrlCtx controllers.UsersContext,
 	c UsersCtrl,
 ) chi.Router {
 	r := chi.NewRouter()
@@ -75,19 +75,23 @@ func (h *Users) routes(
 		// CRUD by key operations
 		r.Route("/:key", func(r chi.Router) {
 			r.Get("/", c.FindByKey)
-			r.Put("/", c.ReplaceByKey)
+			r.Put("/", c.UpdateByKey)
 			r.Delete("/", c.DeleteByKey)
+			r.Post("/password", c.UpdatePassword)
 		})
 	})
 
 	// Custom self routes
 	r.Route("/me", func(r chi.Router) {
 		r.Use(middlewares.NewAuthenticatedOnly(j))
+		ctrlCtx.Key = ctrlCtx.CurrentUser.Key
 
-		r.Get("/", c.FindSelf)
+		r.Get("/", c.FindByKey)
+		r.Put("/", c.UpdateByKey)
+		r.Delete("/", c.DeleteByKey)
 		r.Get("/session", c.CurrentSession)
 		r.Post("/signout", c.Signout)
-		r.Post("/password", c.UpdateSelfPassword)
+		r.Post("/password", c.UpdatePassword)
 	})
 
 	r.Post("/signin", c.Signin)
@@ -136,7 +140,8 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		sessionsInter,
 	)
 
-	validator := validators.NewUsers()
+	valid := validators.NewUsers()
+	sessionsValid := validators.NewSessions()
 
 	ctrl := controllers.NewUsers(
 		h.Constants,
@@ -144,8 +149,9 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		h.JSON,
 		context,
 		inter,
-		validator,
+		valid,
+		sessionsValid,
 	)
 
-	h.routes(h.JSON, ctrl).ServeHTTPC(ctx, w, r)
+	h.routes(h.JSON, context, ctrl).ServeHTTPC(ctx, w, r)
 }

@@ -31,7 +31,7 @@ type (
 		Delete(userID string, f *filters.Filter) ([]models.User, error)
 
 		FindByKey(userID, id string, f *filters.Filter) (*models.User, error)
-		ReplaceByKey(userID, id string, user *models.User) (*models.User, error)
+		UpdateByKey(userID, id string, user *models.User) (*models.User, error)
 		DeleteByKey(userID, id string) (*models.User, error)
 
 		Signin(cred *models.Credentials, agent string) (*models.Session, error)
@@ -43,14 +43,20 @@ type (
 		Signin(cred *models.Credentials) error
 		Create(users []models.User) error
 		Update(user *models.User) error
-		UpdateSelfPassword(pwd *models.Password) error
+		UpdatePassword(pwd *models.Password) error
+		Output(users []models.User) []models.User
+	}
+
+	SessionsOutputValidator interface {
+		Output(users []models.Session) []models.Session
 	}
 
 	Users struct {
 		snakepit.Controller
-		Context   UsersContext
-		Inter     UsersInter
-		Validator UsersValidator
+		Context           UsersContext
+		Inter             UsersInter
+		Validator         UsersValidator
+		SessionsValidator SessionsOutputValidator
 	}
 )
 
@@ -61,12 +67,14 @@ func NewUsers(
 	ctx UsersContext,
 	i UsersInter,
 	v UsersValidator,
+	sv SessionsOutputValidator,
 ) *Users {
 	return &Users{
-		Controller: *snakepit.NewController(c, l, j),
-		Context:    ctx,
-		Inter:      i,
-		Validator:  v,
+		Controller:        *snakepit.NewController(c, l, j),
+		Context:           ctx,
+		Inter:             i,
+		Validator:         v,
+		SessionsValidator: sv,
 	}
 }
 
@@ -101,9 +109,7 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	session.Policies = nil
-	session.Payload = ""
-	session.OwnerToken = ""
+	session = &c.SessionsValidator.Output([]models.Session{*session})[0]
 
 	c.JSON.Render(ctx, w, http.StatusCreated, session)
 }
@@ -117,7 +123,9 @@ func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Reque
 // Responses:
 //  200: SessionResponse
 func (c *Users) CurrentSession(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	c.JSON.Render(ctx, w, http.StatusOK, c.Context.CurrentSession)
+	session := &c.SessionsValidator.Output([]models.Session{*c.Context.CurrentSession})[0]
+
+	c.JSON.Render(ctx, w, http.StatusOK, session)
 }
 
 // Signout swagger:route POST /users/me/signout Users UsersSignout
@@ -135,9 +143,7 @@ func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	session.Policies = nil
-	session.Payload = ""
-	session.OwnerToken = ""
+	session = &c.SessionsValidator.Output([]models.Session{*session})[0]
 
 	c.JSON.Render(ctx, w, http.StatusOK, session)
 }
@@ -162,36 +168,9 @@ func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	for i := range users {
-		users[i].Password = ""
-	}
+	users = c.Validator.Output(users)
 
 	c.JSON.Render(ctx, w, http.StatusOK, users)
-}
-
-// FindSelf swagger:route GET /users/me Users UsersFindSelf
-//
-// Find self
-//
-// Finds the user currently signed in.
-//
-// Responses:
-//  200: UserResponse
-func (c *Users) FindSelf(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, c.Context.CurrentUser.ID, nil)
-	if err != nil {
-		switch {
-		case merry.Is(err, errs.NotFound):
-			c.JSON.RenderError(ctx, w, http.StatusForbidden, errs.APIForbidden, err)
-		default:
-			c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
-		}
-		return
-	}
-
-	user.Password = ""
-
-	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
 // FindByKey swagger:route GET /users/{key} Users UsersFindByKey
@@ -216,7 +195,7 @@ func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	user.Password = ""
+	user = &c.Validator.Output([]models.User{*user})[0]
 
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
@@ -248,6 +227,8 @@ func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	users = c.Validator.Output(users)
+
 	if bulk {
 		c.JSON.Render(ctx, w, http.StatusCreated, users)
 	} else {
@@ -275,6 +256,8 @@ func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	users = c.Validator.Output(users)
+
 	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
@@ -297,6 +280,8 @@ func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.
 		}
 		return
 	}
+
+	user = &c.Validator.Output([]models.User{*user})[0]
 
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
@@ -321,10 +306,6 @@ func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	user.Key = ""
-	user.Password = ""
-	user.OwnerToken = ""
-
 	users, err := c.Inter.Update(c.Context.CurrentUser.ID, user, c.Context.Filter)
 	if err != nil {
 		switch {
@@ -336,34 +317,32 @@ func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	users = c.Validator.Output(users)
+
 	c.JSON.Render(ctx, w, http.StatusOK, users)
 }
 
-// ReplaceByKey swagger:route PUT /users/{key} Users UsersReplaceByKey
+// UpdateByKey swagger:route PUT /users/{key} Users UsersUpdateByKey
 //
-// Replace by key
+// Update by key
 //
-// Replaces a user by key in the data source.
+// Updates a user by key in the data source.
 //
 // Responses:
 //  200: UserResponse
-func (c *Users) ReplaceByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	user := &models.User{}
 
 	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, user); !ok {
 		return
 	}
 
-	if err := c.Validator.Create([]models.User{*user}); err != nil {
+	if err := c.Validator.Update(user); err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 
-	user.Key = ""
-	user.Password = ""
-	user.OwnerToken = ""
-
-	user, err := c.Inter.ReplaceByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, user)
+	user, err := c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, user)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):
@@ -374,30 +353,32 @@ func (c *Users) ReplaceByKey(ctx context.Context, w http.ResponseWriter, r *http
 		return
 	}
 
+	user = &c.Validator.Output([]models.User{*user})[0]
+
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }
 
-// UpdateSelfPassword swagger:route POST /users/me/password Users UsersUpdateSelfPassword
+// UpdatePassword swagger:route POST /users/{key}/password Users UsersUpdatePassword
 //
-// Update self password
+// Update password
 //
-// Updates the current user password.
+// Updates the user password by key in the data source.
 //
 // Responses:
 //  200: UserResponse
-func (c *Users) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+func (c *Users) UpdatePassword(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	pwd := &models.Password{}
 
 	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, pwd); !ok {
 		return
 	}
 
-	if err := c.Validator.UpdateSelfPassword(pwd); err != nil {
+	if err := c.Validator.UpdatePassword(pwd); err != nil {
 		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
 		return
 	}
 
-	user, err := c.Inter.UpdatePassword(c.Context.CurrentUser.ID, c.Context.CurrentUser.ID, pwd.Password)
+	user, err := c.Inter.UpdatePassword(c.Context.CurrentUser.ID, c.Context.Key, pwd.Password)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):
@@ -408,7 +389,7 @@ func (c *Users) UpdateSelfPassword(ctx context.Context, w http.ResponseWriter, r
 		return
 	}
 
-	user.Password = ""
+	user = &c.Validator.Output([]models.User{*user})[0]
 
 	c.JSON.Render(ctx, w, http.StatusOK, user)
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/Sirupsen/logrus"
 	"github.com/solher/snakepit-seed/app"
 	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit/root"
@@ -11,6 +12,10 @@ func init() {
 	root.Cmd.AddCommand(run.Cmd)
 
 	run.Builder = app.Builder
+
+	run.Logger.Formatter = &logrus.TextFormatter{
+		ForceColors: true,
+	}
 
 	// APP
 	run.Cmd.PersistentFlags().String("policyName", "snakepit", "policy created when sign in")

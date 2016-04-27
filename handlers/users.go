@@ -102,7 +102,11 @@ func (h *Users) routes(
 func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	accessToken, _ := middlewares.GetAccessToken(ctx)
 	currentUser, _ := middlewares.GetCurrentUser(ctx)
-	currentSession, _ := middlewares.GetCurrentSession(ctx)
+	currentSession, err := middlewares.GetCurrentSession(ctx)
+	var role middlewares.Role
+	if err == nil {
+		role = middlewares.Role(currentSession.Role)
+	}
 
 	filter, err := filters.FromRequest(r)
 	if err != nil {
@@ -142,7 +146,7 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 	sessionsValid := validators.NewSessions(logger)
 	var valid controllers.UsersValidator
-	switch middlewares.Role(currentSession.Role) {
+	switch role {
 	case middlewares.Admin:
 		valid = validators.NewUsersAdmin(logger)
 	case middlewares.User:

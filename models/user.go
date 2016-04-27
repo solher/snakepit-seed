@@ -50,7 +50,7 @@ type usersFilterParam struct {
 	Filter string
 }
 
-// swagger:parameters UsersCreate UsersUpdate UsersUpdateByKey
+// swagger:parameters UsersCreate UsersUpdate UsersUpdateByKey UsersSignup
 type usersBodyParam struct {
 	// required: true
 	// in: body

@@ -22,21 +22,37 @@ func newUsers(l *logrus.Entry) *users {
 	}
 }
 
+func (v *users) signup(user *models.User) (*models.User, error) {
+	if len(user.Email) == 0 {
+		return nil, merry.Here(snakepit.NewValidationError(errs.FieldEmail, errs.ValidBlank))
+	}
+
+	if len(user.Password) == 0 {
+		return nil, merry.Here(snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank))
+	}
+
+	user.Key = ""
+	user.OwnerToken = ""
+	user.Role = ""
+
+	return user, nil
+}
+
 func (v *users) create(users []models.User) ([]models.User, error) {
-	for _, user := range users {
-		if len(user.Email) == 0 {
+	for i := range users {
+		if len(users[i].Email) == 0 {
 			return nil, merry.Here(snakepit.NewValidationError(errs.FieldEmail, errs.ValidBlank))
 		}
 
-		if len(user.Password) == 0 {
+		if len(users[i].Password) == 0 {
 			return nil, merry.Here(snakepit.NewValidationError(errs.FieldPassword, errs.ValidBlank))
 		}
 
-		if len(user.Role) == 0 {
+		if len(users[i].Role) == 0 {
 			return nil, merry.Here(snakepit.NewValidationError(errs.FieldRole, errs.ValidBlank))
 		}
 
-		if err := v.roleExistence(middlewares.Role(user.Role)); err != nil {
+		if err := v.roleExistence(middlewares.Role(users[i].Role)); err != nil {
 			return nil, err
 		}
 	}

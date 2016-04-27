@@ -25,22 +25,24 @@ type (
 	}
 
 	UsersInter interface {
-		Create(userID string, users []models.User) ([]models.User, error)
-		Find(userID string, f *filters.Filter) ([]models.User, error)
-		Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error)
-		Delete(userID string, f *filters.Filter) ([]models.User, error)
+		Create(users []models.User) ([]models.User, error)
+		Find(f *filters.Filter) ([]models.User, error)
+		Update(user *models.User, f *filters.Filter) ([]models.User, error)
+		Delete(f *filters.Filter) ([]models.User, error)
 
-		FindByKey(userID, id string, f *filters.Filter) (*models.User, error)
-		UpdateByKey(userID, id string, user *models.User) (*models.User, error)
-		DeleteByKey(userID, id string) (*models.User, error)
+		FindByKey(key string, f *filters.Filter) (*models.User, error)
+		UpdateByKey(key string, user *models.User) (*models.User, error)
+		DeleteByKey(key string) (*models.User, error)
 
+		Signup(user *models.User) (*models.User, error)
 		Signin(cred *models.Credentials, agent string) (*models.Session, error)
 		Signout(accessToken string) (*models.Session, error)
-		UpdatePassword(userID, id, password string) (*models.User, error)
+		UpdatePassword(key, password string) (*models.User, error)
 	}
 
 	UsersValidator interface {
 		Signin(cred *models.Credentials) (*models.Credentials, error)
+		Signup(user *models.User) (*models.User, error)
 		Create(users []models.User) ([]models.User, error)
 		Update(user *models.User) (*models.User, error)
 		UpdatePassword(pwd *models.Password) (*models.Password, error)
@@ -78,6 +80,38 @@ func NewUsers(
 	}
 }
 
+// Signup swagger:route POST /users/signup Users UsersSignup
+//
+// Sign up
+//
+// Signs up a user and returns it.
+//
+// Responses:
+//  201: UserResponse
+func (c *Users) Signup(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	user := &models.User{}
+
+	if ok := c.JSON.UnmarshalBody(ctx, w, r.Body, user); !ok {
+		return
+	}
+
+	user, err := c.Validator.Signup(user)
+	if err != nil {
+		c.JSON.RenderError(ctx, w, 422, errs.APIValidation, err)
+		return
+	}
+
+	user, err = c.Inter.Signup(user)
+	if err != nil {
+		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
+		return
+	}
+
+	user = &c.Validator.Output([]models.User{*user})[0]
+
+	c.JSON.Render(ctx, w, http.StatusCreated, user)
+}
+
 // Signin swagger:route POST /users/signin Users UsersSignin
 //
 // Sign in
@@ -85,7 +119,7 @@ func NewUsers(
 // Signs in a user and returns a new session.
 //
 // Responses:
-//  200: SessionResponse
+//  201: SessionResponse
 func (c *Users) Signin(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	cred := &models.Credentials{}
 
@@ -158,7 +192,7 @@ func (c *Users) Signout(ctx context.Context, w http.ResponseWriter, r *http.Requ
 // Responses:
 //  200: UsersResponse
 func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	users, err := c.Inter.Find(c.Context.CurrentUser.ID, c.Context.Filter)
+	users, err := c.Inter.Find(c.Context.Filter)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.InvalidFilter):
@@ -183,7 +217,7 @@ func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request
 // Responses:
 //  200: UserResponse
 func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, c.Context.Filter)
+	user, err := c.Inter.FindByKey(c.Context.Key, c.Context.Filter)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.InvalidFilter):
@@ -223,7 +257,7 @@ func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	users, err = c.Inter.Create(c.Context.CurrentUser.ID, users)
+	users, err = c.Inter.Create(users)
 	if err != nil {
 		c.JSON.RenderError(ctx, w, http.StatusInternalServerError, errs.APIInternal, err)
 		return
@@ -247,7 +281,7 @@ func (c *Users) Create(ctx context.Context, w http.ResponseWriter, r *http.Reque
 // Responses:
 //  200: UsersResponse
 func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	users, err := c.Inter.Delete(c.Context.CurrentUser.ID, c.Context.Filter)
+	users, err := c.Inter.Delete(c.Context.Filter)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.InvalidFilter):
@@ -272,7 +306,7 @@ func (c *Users) Delete(ctx context.Context, w http.ResponseWriter, r *http.Reque
 // Responses:
 //  200: UserResponse
 func (c *Users) DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	user, err := c.Inter.DeleteByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key)
+	user, err := c.Inter.DeleteByKey(c.Context.Key)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):
@@ -309,7 +343,7 @@ func (c *Users) Update(ctx context.Context, w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	users, err := c.Inter.Update(c.Context.CurrentUser.ID, user, c.Context.Filter)
+	users, err := c.Inter.Update(user, c.Context.Filter)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.InvalidFilter):
@@ -346,7 +380,7 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 		return
 	}
 
-	user, err = c.Inter.UpdateByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, user)
+	user, err = c.Inter.UpdateByKey(c.Context.Key, user)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):
@@ -383,7 +417,7 @@ func (c *Users) UpdatePassword(ctx context.Context, w http.ResponseWriter, r *ht
 		return
 	}
 
-	user, err := c.Inter.UpdatePassword(c.Context.CurrentUser.ID, c.Context.Key, pwd.Password)
+	user, err := c.Inter.UpdatePassword(c.Context.Key, pwd.Password)
 	if err != nil {
 		switch {
 		case merry.Is(err, errs.NotFound):

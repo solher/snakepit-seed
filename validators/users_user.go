@@ -20,6 +20,14 @@ func NewUsersUser(l *logrus.Entry) *UsersUser {
 	}
 }
 
+func (v *UsersUser) Signup(user *models.User) (*models.User, error) {
+	start := time.Now()
+	defer v.LogTime(start)
+
+	return v.signup(user)
+}
+
+// Create is never used by a user
 func (v *UsersUser) Create(users []models.User) ([]models.User, error) {
 	start := time.Now()
 	defer v.LogTime(start)

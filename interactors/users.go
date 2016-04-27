@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/solher/snakepit-seed/constants"
+	"github.com/solher/snakepit-seed/middlewares"
 	"github.com/solher/snakepit-seed/utils"
 
 	"github.com/solher/snakepit-seed/errs"
@@ -47,7 +48,18 @@ func NewUsers(
 	}
 }
 
-func (i *Users) Find(userID string, f *filters.Filter) ([]models.User, error) {
+func (i *Users) Signup(user *models.User) (*models.User, error) {
+	user.Role = string(middlewares.User)
+
+	users, err := i.Create([]models.User{*user})
+	if err != nil {
+		return nil, err
+	}
+
+	return &users[0], nil
+}
+
+func (i *Users) Find(f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
 		return nil, err
@@ -55,10 +67,9 @@ func (i *Users) Find(userID string, f *filters.Filter) ([]models.User, error) {
 
 	q := arangolite.NewQuery(`
 		FOR u IN users
-        FILTER u._id == @userID
 		%s
 		RETURN u
-	`, filter).Bind("userID", userID)
+	`, filter)
 
 	users := []models.User{}
 
@@ -134,14 +145,14 @@ func (i *Users) FindByCred(cred *models.Credentials) (*models.User, error) {
 	return user, nil
 }
 
-func (i *Users) FindByKey(userID, id string, f *filters.Filter) (*models.User, error) {
+func (i *Users) FindByKey(key string, f *filters.Filter) (*models.User, error) {
 	if f == nil {
 		f = &filters.Filter{}
 	}
 
-	f.Where = append(f.Where, map[string]interface{}{"_id": id})
+	f.Where = append(f.Where, map[string]interface{}{"_key": key})
 
-	users, err := i.Find(userID, f)
+	users, err := i.Find(f)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +164,7 @@ func (i *Users) FindByKey(userID, id string, f *filters.Filter) (*models.User, e
 	return &users[0], nil
 }
 
-func (i *Users) Create(userID string, users []models.User) ([]models.User, error) {
+func (i *Users) Create(users []models.User) ([]models.User, error) {
 	for i := range users {
 		enc, err := bcrypt.GenerateFromPassword([]byte(users[i].Password), 11)
 		if err != nil {
@@ -178,7 +189,7 @@ func (i *Users) Create(userID string, users []models.User) ([]models.User, error
 	return users, nil
 }
 
-func (i *Users) Delete(userID string, f *filters.Filter) ([]models.User, error) {
+func (i *Users) Delete(f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
 		return nil, err
@@ -186,11 +197,10 @@ func (i *Users) Delete(userID string, f *filters.Filter) ([]models.User, error) 
 
 	q := arangolite.NewQuery(`
 		FOR u IN users
-        FILTER u.createdBy == @userID
 		%s
 		REMOVE u IN users
 		RETURN OLD
-	`, filter).Bind("userID", userID)
+	`, filter)
 
 	users := []models.User{}
 
@@ -208,11 +218,11 @@ func (i *Users) Delete(userID string, f *filters.Filter) ([]models.User, error) 
 	return users, nil
 }
 
-func (i *Users) DeleteByKey(userID, id string) (*models.User, error) {
+func (i *Users) DeleteByKey(key string) (*models.User, error) {
 	f := &filters.Filter{}
-	f.Where = append(f.Where, map[string]interface{}{"_id": id})
+	f.Where = append(f.Where, map[string]interface{}{"_key": key})
 
-	users, err := i.Delete(userID, f)
+	users, err := i.Delete(f)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +234,7 @@ func (i *Users) DeleteByKey(userID, id string) (*models.User, error) {
 	return &users[0], nil
 }
 
-func (i *Users) Update(userID string, user *models.User, f *filters.Filter) ([]models.User, error) {
+func (i *Users) Update(user *models.User, f *filters.Filter) ([]models.User, error) {
 	filter, err := utils.FilterToAQL("u", f)
 	if err != nil {
 		return nil, err
@@ -232,11 +242,10 @@ func (i *Users) Update(userID string, user *models.User, f *filters.Filter) ([]m
 
 	q := arangolite.NewQuery(`
 		FOR u IN users
-        FILTER u._id == @userID
 		%s
 		UPDATE u with @user IN users
 		RETURN NEW
-	`, filter).Bind("user", user).Bind("userID", userID)
+	`, filter).Bind("user", user)
 
 	users := []models.User{}
 
@@ -247,11 +256,11 @@ func (i *Users) Update(userID string, user *models.User, f *filters.Filter) ([]m
 	return users, nil
 }
 
-func (i *Users) UpdateByKey(userID, id string, user *models.User) (*models.User, error) {
+func (i *Users) UpdateByKey(key string, user *models.User) (*models.User, error) {
 	f := &filters.Filter{}
-	f.Where = append(f.Where, map[string]interface{}{"_id": id})
+	f.Where = append(f.Where, map[string]interface{}{"_key": key})
 
-	users, err := i.Update(userID, user, f)
+	users, err := i.Update(user, f)
 	if err != nil {
 		return nil, err
 	}
@@ -263,7 +272,7 @@ func (i *Users) UpdateByKey(userID, id string, user *models.User) (*models.User,
 	return &users[0], nil
 }
 
-func (i *Users) UpdatePassword(userID, id, password string) (*models.User, error) {
+func (i *Users) UpdatePassword(key, password string) (*models.User, error) {
 	enc, err := bcrypt.GenerateFromPassword([]byte(password), 11)
 	if err != nil {
 		return nil, merry.Here(err)
@@ -273,7 +282,7 @@ func (i *Users) UpdatePassword(userID, id, password string) (*models.User, error
 		Password: string(enc),
 	}
 
-	user, err = i.UpdateByKey(userID, id, user)
+	user, err = i.UpdateByKey(key, user)
 	if err != nil {
 		return nil, err
 	}

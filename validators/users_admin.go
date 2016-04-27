@@ -20,6 +20,13 @@ func NewUsersAdmin(l *logrus.Entry) *UsersAdmin {
 	}
 }
 
+func (v *UsersAdmin) Signup(user *models.User) (*models.User, error) {
+	start := time.Now()
+	defer v.LogTime(start)
+
+	return v.signup(user)
+}
+
 func (v *UsersAdmin) Create(users []models.User) ([]models.User, error) {
 	start := time.Now()
 	defer v.LogTime(start)

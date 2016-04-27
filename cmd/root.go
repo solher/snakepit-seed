@@ -12,7 +12,6 @@ func init() {
 	// DATABASE
 	root.Cmd.PersistentFlags().String("dbUrl", "http://localhost:8000", "database URL")
 	root.Viper.BindPFlag(constants.DBURL, root.Cmd.PersistentFlags().Lookup("dbUrl"))
-	root.Viper.RegisterAlias(constants.DBURL, "ARANGODB_PORT")
 
 	root.Cmd.PersistentFlags().String("dbName", "snakepit", "database name")
 	root.Viper.BindPFlag(constants.DBName, root.Cmd.PersistentFlags().Lookup("dbName"))

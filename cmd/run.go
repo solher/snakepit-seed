@@ -24,5 +24,4 @@ func init() {
 	// SERVICES
 	run.Cmd.PersistentFlags().String("authServerUrl", "", "auth server URL")
 	root.Viper.BindPFlag(constants.AuthServerURL, run.Cmd.PersistentFlags().Lookup("authServerUrl"))
-	root.Viper.RegisterAlias(constants.AuthServerURL, "AUTH_SERVER_PORT")
 }

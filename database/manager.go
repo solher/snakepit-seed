@@ -41,14 +41,6 @@ func (d *Manager) Drop(rootName, rootPassword string) error {
 	return nil
 }
 
-func (d *Manager) LoadDistantSeed() error {
-	if err := d.db.LoadDistantSeed(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (d *Manager) SyncSeeds() error {
 	if err := d.db.SyncSeeds(); err != nil {
 		return err

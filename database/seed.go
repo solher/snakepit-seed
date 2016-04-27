@@ -3,6 +3,7 @@ package database
 import (
 	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit-seed/utils"
+	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/solher/snakepit-seed/models"
@@ -34,4 +35,7 @@ func NewProdSeed() *ProdSeed {
 	}...)
 
 	return s
+}
+
+func (s *ProdSeed) PopulateConstants(v *viper.Viper) {
 }

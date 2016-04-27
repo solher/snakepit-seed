@@ -58,7 +58,7 @@ func NewUsers(
 
 func (h *Users) routes(
 	j *snakepit.JSON,
-	ctrlCtx controllers.UsersContext,
+	ctrlCtx *controllers.UsersContext,
 	c UsersCtrl,
 ) chi.Router {
 	r := chi.NewRouter()
@@ -74,6 +74,13 @@ func (h *Users) routes(
 
 		// CRUD by key operations
 		r.Route("/:key", func(r chi.Router) {
+			r.Use(func(next chi.Handler) chi.Handler {
+				return chi.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+					ctrlCtx.Key = chi.URLParam(ctx, "key")
+					next.ServeHTTPC(ctx, w, r)
+				})
+			})
+
 			r.Get("/", c.FindByKey)
 			r.Put("/", c.UpdateByKey)
 			r.Delete("/", c.DeleteByKey)
@@ -119,11 +126,10 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	context := controllers.UsersContext{
+	context := &controllers.UsersContext{
 		AccessToken:    accessToken,
 		CurrentUser:    currentUser,
 		CurrentSession: currentSession,
-		Key:            chi.URLParam(ctx, "key"),
 		Filter:         filter,
 	}
 

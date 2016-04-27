@@ -53,7 +53,7 @@ type (
 
 	Users struct {
 		snakepit.Controller
-		Context           UsersContext
+		Context           *UsersContext
 		Inter             UsersInter
 		Validator         UsersValidator
 		SessionsValidator SessionsOutputValidator
@@ -64,7 +64,7 @@ func NewUsers(
 	c *viper.Viper,
 	l *logrus.Entry,
 	j *snakepit.JSON,
-	ctx UsersContext,
+	ctx *UsersContext,
 	i UsersInter,
 	v UsersValidator,
 	sv SessionsOutputValidator,
@@ -183,8 +183,6 @@ func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request
 // Responses:
 //  200: UserResponse
 func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-	c.Logger.Debug(c.Context.Key)
-
 	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, c.Context.Filter)
 	if err != nil {
 		switch {

@@ -139,8 +139,6 @@ func (i *Users) FindByKey(userID, id string, f *filters.Filter) (*models.User, e
 		f = &filters.Filter{}
 	}
 
-	i.Logger.Debug(id)
-
 	f.Where = append(f.Where, map[string]interface{}{"_id": id})
 
 	users, err := i.Find(userID, f)

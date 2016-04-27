@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/solher/snakepit-seed/middlewares"
+	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit-seed/utils"
 	"golang.org/x/crypto/bcrypt"
 
@@ -29,7 +29,7 @@ func NewProdSeed() *ProdSeed {
 			Email:      "admin",
 			OwnerToken: utils.GenToken(32),
 			Password:   string(enc),
-			Role:       string(middlewares.Admin),
+			Role:       constants.RoleAdmin,
 		},
 	}...)
 

@@ -4,5 +4,5 @@ type AuthServerPayload struct {
 	// The user associated with the session.
 	User *User `json:"user,omitempty"`
 	// The role name of the session.
-	Role string `json:"role,omitempty"`
+	Role Role `json:"role,omitempty"`
 }

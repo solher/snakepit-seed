@@ -20,7 +20,7 @@ type Session struct {
 	// A client non checked custom payload.
 	Payload string `json:"payload,omitempty"`
 	// The role name of the session.
-	Role string `json:"role,omitempty"`
+	Role Role `json:"role,omitempty"`
 }
 
 // swagger:response SessionResponse

@@ -3,11 +3,14 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/solher/snakepit-seed/models"
+
 	"gopkg.in/h2non/gentleman.v1"
 
 	"github.com/pressly/chi"
 	"github.com/solher/arangolite/filters"
 	"github.com/solher/snakepit"
+	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit-seed/controllers"
 	"github.com/solher/snakepit-seed/errs"
 	"github.com/solher/snakepit-seed/interactors"
@@ -115,9 +118,9 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	accessToken, _ := middlewares.GetAccessToken(ctx)
 	currentUser, _ := middlewares.GetCurrentUser(ctx)
 	currentSession, err := middlewares.GetCurrentSession(ctx)
-	var role middlewares.Role
+	var role models.Role
 	if err == nil {
-		role = middlewares.Role(currentSession.Role)
+		role = currentSession.Role
 	}
 
 	filter, err := filters.FromRequest(r)
@@ -158,9 +161,9 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	sessionsValid := validators.NewSessions(logger)
 	var valid controllers.UsersValidator
 	switch role {
-	case middlewares.Admin:
+	case constants.RoleAdmin:
 		valid = validators.NewUsersAdmin(logger)
-	case middlewares.User:
+	case constants.RoleUser:
 		valid = validators.NewUsersUser(logger)
 	default:
 		valid = validators.NewUsersUser(logger)

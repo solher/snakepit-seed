@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/solher/snakepit-seed/constants"
-	"github.com/solher/snakepit-seed/middlewares"
 	"github.com/solher/snakepit-seed/utils"
 
 	"github.com/solher/snakepit-seed/errs"
@@ -49,7 +48,7 @@ func NewUsers(
 }
 
 func (i *Users) Signup(user *models.User) (*models.User, error) {
-	user.Role = string(middlewares.User)
+	user.Role = constants.RoleUser
 
 	users, err := i.Create([]models.User{*user})
 	if err != nil {

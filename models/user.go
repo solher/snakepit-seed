@@ -18,7 +18,7 @@ type User struct {
 	// The user password.
 	Password string `json:"password,omitempty"`
 	// The role name of the user.
-	Role string `json:"role,omitempty"`
+	Role Role `json:"role,omitempty"`
 }
 
 // swagger:response UsersResponse

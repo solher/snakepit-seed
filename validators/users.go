@@ -5,8 +5,8 @@ import (
 	"github.com/ansel1/merry"
 	"github.com/solher/snakepit"
 
+	"github.com/solher/snakepit-seed/constants"
 	"github.com/solher/snakepit-seed/errs"
-	"github.com/solher/snakepit-seed/middlewares"
 	"github.com/solher/snakepit-seed/models"
 )
 
@@ -52,7 +52,7 @@ func (v *users) create(users []models.User) ([]models.User, error) {
 			return nil, merry.Here(snakepit.NewValidationError(errs.FieldRole, errs.ValidBlank))
 		}
 
-		if err := v.roleExistence(middlewares.Role(users[i].Role)); err != nil {
+		if err := v.roleExistence(users[i].Role); err != nil {
 			return nil, err
 		}
 	}
@@ -73,7 +73,7 @@ func (v *users) signin(cred *models.Credentials) (*models.Credentials, error) {
 }
 
 func (v *users) update(user *models.User) (*models.User, error) {
-	if err := v.roleExistence(middlewares.Role(user.Role)); err != nil {
+	if err := v.roleExistence(user.Role); err != nil {
 		return nil, err
 	}
 
@@ -100,11 +100,11 @@ func (v *users) output(users []models.User) []models.User {
 	return users
 }
 
-func (v *users) roleExistence(role middlewares.Role) error {
+func (v *users) roleExistence(role models.Role) error {
 	switch role {
-	case middlewares.Admin,
-		middlewares.Developer,
-		middlewares.User:
+	case constants.RoleAdmin,
+		constants.RoleDeveloper,
+		constants.RoleUser:
 		return nil
 	case "":
 		return nil

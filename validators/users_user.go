@@ -59,5 +59,9 @@ func (v *UsersUser) UpdatePassword(pwd *models.Password) (*models.Password, erro
 }
 
 func (v *UsersUser) Output(users []models.User) []models.User {
+	for i := range users {
+		users[i].OwnerToken = ""
+	}
+
 	return v.output(users)
 }

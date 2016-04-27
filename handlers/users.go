@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/solher/snakepit-seed/models"
 
@@ -117,6 +118,8 @@ func (h *Users) routes(
 }
 
 func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
 	accessToken, _ := middlewares.GetAccessToken(ctx)
 	currentUser, _ := middlewares.GetCurrentUser(ctx)
 	currentSession, err := middlewares.GetCurrentSession(ctx)
@@ -181,5 +184,9 @@ func (h *Users) builder(ctx context.Context, w http.ResponseWriter, r *http.Requ
 		sessionsValid,
 	)
 
-	h.routes(h.JSON, context, ctrl).ServeHTTPC(ctx, w, r)
+	subrouter := h.routes(h.JSON, context, ctrl)
+
+	h.LogTime(logger, start)
+
+	subrouter.ServeHTTPC(ctx, w, r)
 }

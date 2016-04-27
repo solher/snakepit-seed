@@ -183,6 +183,8 @@ func (c *Users) Find(ctx context.Context, w http.ResponseWriter, r *http.Request
 // Responses:
 //  200: UserResponse
 func (c *Users) FindByKey(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+	c.Logger.Debug(c.Context.Key)
+
 	user, err := c.Inter.FindByKey(c.Context.CurrentUser.ID, "users/"+c.Context.Key, c.Context.Filter)
 	if err != nil {
 		switch {
@@ -366,7 +368,7 @@ func (c *Users) UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.
 //
 // Update password
 //
-// Updates the user password by key in the data source.
+// Updates the user password in the data source.
 //
 // Responses:
 //  200: UserResponse

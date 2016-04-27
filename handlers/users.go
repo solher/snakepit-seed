@@ -84,7 +84,12 @@ func (h *Users) routes(
 	// Custom self routes
 	r.Route("/me", func(r chi.Router) {
 		r.Use(middlewares.NewAuthenticatedOnly(j))
-		ctrlCtx.Key = ctrlCtx.CurrentUser.Key
+		r.Use(func(next chi.Handler) chi.Handler {
+			return chi.HandlerFunc(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+				ctrlCtx.Key = ctrlCtx.CurrentUser.Key
+				next.ServeHTTPC(ctx, w, r)
+			})
+		})
 
 		r.Get("/", c.FindByKey)
 		r.Put("/", c.UpdateByKey)

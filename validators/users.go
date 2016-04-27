@@ -101,13 +101,14 @@ func (v *users) output(users []models.User) []models.User {
 }
 
 func (v *users) roleExistence(role models.Role) error {
-	switch role {
-	case constants.RoleAdmin,
-		constants.RoleDeveloper,
-		constants.RoleUser:
+	if len(role) == 0 {
 		return nil
-	case "":
-		return nil
+	}
+
+	for _, r := range constants.Roles {
+		if role == r {
+			return nil
+		}
 	}
 
 	return merry.Here(snakepit.NewValidationError(errs.FieldRole, errs.ValidInvalid))

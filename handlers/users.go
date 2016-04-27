@@ -32,6 +32,7 @@ type (
 		UpdateByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		DeleteByKey(ctx context.Context, w http.ResponseWriter, r *http.Request)
 
+		Signup(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		Signin(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		CurrentSession(ctx context.Context, w http.ResponseWriter, r *http.Request)
 		Signout(ctx context.Context, w http.ResponseWriter, r *http.Request)
@@ -109,6 +110,7 @@ func (h *Users) routes(
 		r.Post("/password", c.UpdatePassword)
 	})
 
+	r.Post("/signup", c.Signup)
 	r.Post("/signin", c.Signin)
 
 	return r

@@ -16,7 +16,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-func Builder(v *viper.Viper, l *logrus.Logger) http.Handler {
+func Builder(v *viper.Viper, l *logrus.Logger) (http.Handler, error) {
 	distantSeed := database.NewEmptyProdSeed()
 
 	db := snakepit.NewArangoDBManager(
@@ -32,7 +32,7 @@ func Builder(v *viper.Viper, l *logrus.Logger) http.Handler {
 	)
 
 	if err := db.LoadDistantSeed(); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	distantSeed.PopulateConstants(v)
@@ -53,5 +53,5 @@ func Builder(v *viper.Viper, l *logrus.Logger) http.Handler {
 
 	router.Mount("/users", handlers.NewUsers(v, json, db, cli))
 
-	return router
+	return router, nil
 }

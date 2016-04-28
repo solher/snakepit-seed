@@ -1,5 +1,5 @@
 hash: e64b1349c5fb7f201a89509f49788f6e3a649e25ddf1ba3a143f3bf1addea85d
-updated: 2016-04-27T15:52:22.262453907-07:00
+updated: 2016-04-28T16:43:06.825070997-07:00
 imports:
 - name: github.com/ansel1/merry
   version: 5d27db058b2209512885615d6b5d96df9569d0c9
@@ -46,7 +46,7 @@ imports:
   subpackages:
   - filters
 - name: github.com/solher/snakepit
-  version: 3a8a32ef69a1f03a578d5b13e0cb6aa81446deb8
+  version: f22c5f02c31f4c6f4eee8361212c821a4caa1231
   subpackages:
   - root
   - run

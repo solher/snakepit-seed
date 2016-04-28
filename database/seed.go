@@ -24,7 +24,7 @@ func NewProdSeed() *ProdSeed {
 
 	s.Users = append(s.Users, []models.User{
 		{
-			Key:        "admin",
+			Document:   models.NewDocument("", "", "admin"),
 			FirstName:  "admin",
 			LastName:   "admin",
 			Email:      "admin",

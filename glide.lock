@@ -1,5 +1,5 @@
 hash: e64b1349c5fb7f201a89509f49788f6e3a649e25ddf1ba3a143f3bf1addea85d
-updated: 2016-04-28T16:43:06.825070997-07:00
+updated: 2016-04-29T12:06:41.880611994-07:00
 imports:
 - name: github.com/ansel1/merry
   version: 5d27db058b2209512885615d6b5d96df9569d0c9
@@ -77,7 +77,7 @@ imports:
 - name: golang.org/x/sys
   version: c8bc69bc2db9c57ccf979550bc69655df5039a8a
 - name: golang.org/x/text
-  version: 3100578f0f8093e37883ba48c9187fe51367ad05
+  version: bd1c9905f55d983c0cd0b15cf0c3e2fe860c8902
 - name: gopkg.in/airbrake/gobrake.v2
   version: 31c8ff1fb8b79a6947e6565e9a6df535f98a6b94
 - name: gopkg.in/eapache/go-resiliency.v1

@@ -53,6 +53,10 @@ func (r *Repository) Run(q arangolite.Runnable, response interface{}) error {
 	}
 	snakepit.LogTime(r.Logger, "Database requesting", start)
 
+	if response == nil {
+		return nil
+	}
+
 	if err := r.JSON.Unmarshal(r.Logger, "Database response", raw, response); err != nil {
 		return merry.Here(err)
 	}
@@ -89,6 +93,10 @@ func (r *Repository) Send(authPayload, method, url string, body, response interf
 		}
 
 		return merry.Errorf("From distant service: %s", errRes.Description)
+	}
+
+	if response == nil {
+		return nil
 	}
 
 	if err := r.JSON.Unmarshal(r.Logger, "HTTP response", res.Bytes(), response); err != nil {

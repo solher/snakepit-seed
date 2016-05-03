@@ -9,8 +9,6 @@ import (
 )
 
 func init() {
-	root.Cmd.AddCommand(run.Cmd)
-
 	run.Builder = app.Builder
 
 	run.Logger.Formatter = &logrus.TextFormatter{

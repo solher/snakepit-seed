@@ -41,7 +41,7 @@ func initDatabaseManager(v *viper.Viper) *database.Manager {
 	ara := snakepit.NewArangoDBManager(database.NewProdSeed(), database.NewEmptyProdSeed()).
 		LoggerOptions(false, false, false).
 		Connect(
-		v.GetString(strings.Replace(v.GetString(constants.DBURL), "tcp", "http", -1)),
+		strings.Replace(v.GetString(constants.DBURL), "tcp", "http", -1),
 		v.GetString(constants.DBName),
 		v.GetString(constants.DBUserName),
 		v.GetString(constants.DBUserPassword),

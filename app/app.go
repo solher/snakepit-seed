@@ -2,6 +2,7 @@ package app
 
 import (
 	"net/http"
+	"strings"
 
 	"gopkg.in/h2non/gentleman.v1"
 
@@ -25,7 +26,7 @@ func Builder(v *viper.Viper, l *logrus.Logger) (http.Handler, error) {
 	).
 		LoggerOptions(false, false, false).
 		Connect(
-		v.GetString(constants.DBURL),
+		strings.Replace(v.GetString(constants.DBURL), "tcp", "http", -1),
 		v.GetString(constants.DBName),
 		v.GetString(constants.DBUserName),
 		v.GetString(constants.DBUserPassword),

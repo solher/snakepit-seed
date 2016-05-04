@@ -18,6 +18,15 @@ import (
 )
 
 func Builder(v *viper.Viper, l *logrus.Logger) (http.Handler, error) {
+	v.Set(
+		constants.DBURL,
+		strings.Replace(v.GetString(constants.DBURL), "tcp://", "http://", -1),
+	)
+	v.Set(
+		constants.AuthServerURL,
+		strings.Replace(v.GetString(constants.AuthServerURL), "tcp://", "http://", -1),
+	)
+
 	distantSeed := database.NewEmptyProdSeed()
 
 	db := snakepit.NewArangoDBManager(
@@ -26,7 +35,7 @@ func Builder(v *viper.Viper, l *logrus.Logger) (http.Handler, error) {
 	).
 		LoggerOptions(false, false, false).
 		Connect(
-		strings.Replace(v.GetString(constants.DBURL), "tcp", "http", -1),
+		v.GetString(constants.DBURL),
 		v.GetString(constants.DBName),
 		v.GetString(constants.DBUserName),
 		v.GetString(constants.DBUserPassword),

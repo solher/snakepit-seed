@@ -1,5 +1,5 @@
 hash: e64b1349c5fb7f201a89509f49788f6e3a649e25ddf1ba3a143f3bf1addea85d
-updated: 2016-05-02T17:36:53.572496595-07:00
+updated: 2016-05-04T17:14:40.869360902-07:00
 imports:
 - name: github.com/ansel1/merry
   version: 5d27db058b2209512885615d6b5d96df9569d0c9
@@ -8,7 +8,7 @@ imports:
 - name: github.com/BurntSushi/toml
   version: f0aeabca5a127c4078abb8c8d64298b147264b55
 - name: github.com/codegangsta/negroni
-  version: c7477ad8e330bef55bf1ebe300cf8aa67c492d1b
+  version: 24bf3506bb5e25bf9fe26f644872f77656d51b57
 - name: github.com/coreos/go-etcd
   version: 003851be7bb0694fe3cc457a49529a19388ee7cf
 - name: github.com/cpuguy83/go-md2man
@@ -46,7 +46,7 @@ imports:
   subpackages:
   - filters
 - name: github.com/solher/snakepit
-  version: d60c86947131f2d272e96d67494812349e4f8811
+  version: aa705cdac6da2ae56815cc65161ecf94ee75d3fd
   subpackages:
   - root
   - run
@@ -67,7 +67,7 @@ imports:
 - name: github.com/xordataexchange/crypt
   version: 749e360c8f236773f28fc6d3ddfce4a470795227
 - name: golang.org/x/crypto
-  version: 285fb2ed20d1dc450fc743a1b3ff7c36bef372b9
+  version: 019870fc9d457ee8abd13a2e93e3f2a3b55b7119
   subpackages:
   - /bcrypt
 - name: golang.org/x/net

@@ -23,4 +23,10 @@ func init() {
 	run.Cmd.PersistentFlags().String("authServerUrl", "", "auth server URL")
 	root.Viper.BindPFlag(constants.AuthServerURL, run.Cmd.PersistentFlags().Lookup("authServerUrl"))
 	root.Viper.RegisterAlias(constants.AuthServerURL, "AUTH_SERVER_PORT")
+
+	// SWAGGER
+	run.Cmd.PersistentFlags().String("swaggerBasePath", "/", "Swagger base path")
+	root.Viper.BindPFlag(constants.SwaggerBasePath, run.Cmd.PersistentFlags().Lookup("swaggerBasePath"))
+	run.Cmd.PersistentFlags().String("swaggerScheme", "http", "Swagger scheme (http or https)")
+	root.Viper.BindPFlag(constants.SwaggerScheme, run.Cmd.PersistentFlags().Lookup("swaggerScheme"))
 }

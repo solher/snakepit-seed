@@ -17,3 +17,7 @@ app:
 services:
     authServer:
         url: "http://auth-server:3000"
+        
+swagger:
+    basePath: "/"
+    scheme: "http"

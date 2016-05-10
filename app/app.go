@@ -53,7 +53,10 @@ func Builder(v *viper.Viper, l *logrus.Logger) (http.Handler, error) {
 
 	timer := snakepit.NewTimer("Middleware stack")
 
-	router.Use(snakepit.NewSwagger())
+	router.Use(snakepit.NewSwagger(
+		v.GetString(constants.SwaggerBasePath),
+		v.GetString(constants.SwaggerScheme),
+	))
 	router.Use(snakepit.NewRequestID())
 	router.Use(snakepit.NewLogger(l))
 	router.Use(timer.Start)
